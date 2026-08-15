@@ -1,0 +1,128 @@
+/* ==========================================================================
+   APEX VELOCITY - KEYFRAME ANIMATIONS & FX
+   ========================================================================== */
+
+@keyframes pulseLive {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(255, 42, 85, 0.7);
+  }
+  70% {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 8px rgba(255, 42, 85, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(255, 42, 85, 0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes bidFlash {
+  0% {
+    background-color: rgba(0, 242, 254, 0.35);
+    transform: scale(1.02);
+  }
+  100% {
+    background-color: transparent;
+    transform: scale(1);
+  }
+}
+
+@keyframes timerUrgent {
+  0%, 100% {
+    color: var(--accent-red);
+    text-shadow: 0 0 15px var(--accent-red);
+    transform: scale(1);
+  }
+  50% {
+    color: #ffffff;
+    text-shadow: 0 0 30px var(--accent-red);
+    transform: scale(1.08);
+  }
+}
+
+@keyframes soldGavelDrop {
+  0% {
+    opacity: 0;
+    transform: scale(2.2) rotate(-15deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(0.95) rotate(4deg);
+  }
+  70% {
+    transform: scale(1.05) rotate(-2deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes goldShine {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes scannerSweep {
+  0% {
+    top: -10%;
+  }
+  100% {
+    top: 110%;
+  }
+}
+
+.anim-bid-flash {
+  animation: bidFlash 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.anim-timer-urgent {
+  animation: timerUrgent 0.8s infinite ease-in-out !important;
+}
+
+.anim-sold-banner {
+  animation: soldGavelDrop 0.65s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.shimmer-badge {
+  background: linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.03) 100%);
+  background-size: 200% 100%;
+  animation: goldShine 3s infinite linear;
+}

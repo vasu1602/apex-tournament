@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Apex Velocity - Racing Tournament Live Auction</title>
+  <meta name="description" content="Motorsport Championship Live Auction Arena. Spectators can track team budgets, driver points, and live bidding in real time with high-octane telemetry visuals.">
+  
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="styles/main.css">
+  <link rel="stylesheet" href="styles/animations.css">
+  <link rel="stylesheet" href="styles/components.css">
+</head>
+<body>
+  <!-- Animated 60fps Canvas Background -->
+  <canvas id="bg-canvas"></canvas>
+
+  <!-- Confetti Celebration Overlay Canvas -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <div class="app-container">
+    <!-- Main Top Navigation Bar -->
+    <header class="app-header">
+      <div class="brand-wrapper" onclick="window.app.switchTab('live-arena-view')">
+        <div class="brand-icon">⚡</div>
+        <div class="brand-text">
+          <span class="brand-title">Apex Velocity</span>
+          <span class="brand-subtitle">Grand Prix Auction 2026</span>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="nav-tabs" role="tablist">
+        <button class="nav-tab-btn active" data-tab="live-arena-view" id="nav-live-btn">
+          Live Arena
+        </button>
+        <button class="nav-tab-btn" data-tab="teams-view" id="nav-teams-btn">
+          Teams & Points
+        </button>
+        <button class="nav-tab-btn" data-tab="racers-view" id="nav-racers-btn">
+          Racer Pool
+        </button>
+        <button class="nav-tab-btn" data-tab="admin-view" id="nav-admin-btn" style="display:none;">
+          Race Control
+        </button>
+      </nav>
+
+      <!-- Action Buttons & Access Code Sign In -->
+      <div class="header-actions">
+        <div class="live-indicator" id="header-live-tag" style="display:none;">
+          <div class="live-dot"></div>
+          <span>Bidding Live</span>
+        </div>
+
+        <button class="btn-icon" id="btn-fullscreen-toggle" onclick="window.app.toggleFullscreen();" title="Toggle Projector Fullscreen">
+          ⛶
+        </button>
+
+        <div id="header-role-container">
+          <button class="role-badge-btn" onclick="window.app.openAccessCodeModal()">
+            Admin Sign In
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content App Body -->
+    <main class="app-main">
+      <!-- TAB 1: LIVE AUCTION ARENA (Spectator & Big Screen) -->
+      <section id="live-arena-view" class="tab-section active"></section>
+
+      <!-- TAB 2: TEAMS & POINTS LEADERBOARD -->
+      <section id="teams-view" class="tab-section">
+        <div class="section-header">
+          <div class="section-title-wrap">
+            <span class="section-tag">LEADERBOARD</span>
+            <h2 class="section-title">Racing Teams & Purse Standings</h2>
+          </div>
+          <p style="color:var(--text-secondary); font-size:0.85rem;">
+            Click on any team card to inspect their signed driver roster, spent purse, and telemetry breakdown.
+          </p>
+        </div>
+        <div class="teams-grid" id="teams-container"></div>
+      </section>
+
+      <!-- TAB 3: RACER DIRECTORY & POOL -->
+      <section id="racers-view" class="tab-section">
+        <div class="section-header">
+          <div class="section-title-wrap">
+            <span class="section-tag">DRIVERS</span>
+            <h2 class="section-title">Championship Driver Pool</h2>
+          </div>
+        </div>
+
+        <!-- Filter & Search Bar -->
+        <div class="filter-bar">
+          <div class="search-input-wrap">
+            <span>🔍</span>
+            <input type="text" id="racer-search-input" placeholder="Search racers, discipline, nationality..." oninput="window.app.handleSearchInput(event)">
+          </div>
+
+          <!-- Status Filter Pills -->
+          <div class="filter-pills">
+            <button class="filter-pill-btn status-pill active" data-status="all" onclick="window.app.setRacerStatusFilter('all')">All Status</button>
+            <button class="filter-pill-btn status-pill" data-status="upcoming" onclick="window.app.setRacerStatusFilter('upcoming')">Upcoming</button>
+            <button class="filter-pill-btn status-pill" data-status="live" onclick="window.app.setRacerStatusFilter('live')">Live Now</button>
+            <button class="filter-pill-btn status-pill" data-status="sold" onclick="window.app.setRacerStatusFilter('sold')">Sold</button>
+            <button class="filter-pill-btn status-pill" data-status="unsold" onclick="window.app.setRacerStatusFilter('unsold')">Unsold</button>
+          </div>
+
+          <!-- Tier Filter Pills -->
+          <div class="filter-pills">
+            <button class="filter-pill-btn cat-pill active" data-cat="All Tiers" onclick="window.app.setRacerCategoryFilter('All Tiers')">All Tiers</button>
+            <button class="filter-pill-btn cat-pill" data-cat="Tier S" onclick="window.app.setRacerCategoryFilter('Tier S')">Tier S</button>
+            <button class="filter-pill-btn cat-pill" data-cat="Tier A" onclick="window.app.setRacerCategoryFilter('Tier A')">Tier A</button>
+            <button class="filter-pill-btn cat-pill" data-cat="Tier B" onclick="window.app.setRacerCategoryFilter('Tier B')">Tier B</button>
+            <button class="filter-pill-btn cat-pill" data-cat="Tier C" onclick="window.app.setRacerCategoryFilter('Tier C')">Tier C</button>
+            <button class="filter-pill-btn cat-pill" data-cat="Tier D" onclick="window.app.setRacerCategoryFilter('Tier D')">Tier D</button>
+          </div>
+        </div>
+
+        <div class="racers-grid" id="racers-container"></div>
+      </section>
+
+      <!-- TAB 4: RACE CONTROL ADMIN DESK -->
+      <section id="admin-view" class="tab-section">
+        <div id="admin-desk-view"></div>
+      </section>
+
+    </main>
+
+    <!-- Global Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Universal Modal Dialog -->
+    <div class="modal-backdrop" id="general-modal" onclick="if(event.target === this) window.app.closeModal();">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 class="modal-title" id="general-modal-title">Modal Title</h3>
+          <button class="btn-icon" onclick="window.app.closeModal()" style="width:32px; height:32px;">✕</button>
+        </div>
+        <div class="modal-body" id="general-modal-body"></div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <div class="footer-credits">
+        <strong>Apex Velocity Racing Tournament</strong> • Championship Driver Auction System
+      </div>
+      <div class="footer-sync-status">
+        <div class="footer-sync-dot"></div>
+        <span>Multi-Window Real-Time Telemetry Sync Active</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Main ES Module Script -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
