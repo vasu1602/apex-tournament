@@ -121,6 +121,21 @@ class TournamentWheelView {
     input.focus();
   }
 
+  submitModalQuickAdd() {
+    const input = document.getElementById('modal-wheel-team-name');
+    const colorInput = document.getElementById('modal-wheel-team-color');
+    if (!input) return;
+    const name = input.value.trim();
+    if (!name) {
+      if (window.app) window.app.showToast('Please type a team name to add.', 'warning');
+      return;
+    }
+
+    const selectedColor = colorInput ? colorInput.value : this.sliceColors[this.activeWheelTeams.length % this.sliceColors.length];
+    this.addCustomTeam(name, selectedColor);
+    this.openTeamManagerModal();
+  }
+
   addCustomTeam(name, customColor) {
     if (!name || !name.trim()) return;
     const cleanName = name.trim();
@@ -188,10 +203,7 @@ class TournamentWheelView {
 
     if (!confirm(`Permanently delete "${targetName}" from the tournament & wheel?`)) return;
 
-    // Remove from active wheel teams
     this.activeWheelTeams = this.activeWheelTeams.filter((t) => t.id !== teamId);
-
-    // Remove from state store
     store.removeTeam(teamId);
 
     if (window.app) window.app.showToast(`Deleted "${targetName}"`, 'info');
@@ -293,6 +305,107 @@ class TournamentWheelView {
     if (window.app) window.app.showToast('Wheel teams shuffled!', 'info');
   }
 
+  // --- POPUP MODAL FOR ADDING / REMOVING TEAMS ---
+  openTeamManagerModal() {
+    const modal = document.getElementById('general-modal');
+    const modalTitle = document.getElementById('general-modal-title');
+    const modalBody = document.getElementById('general-modal-body');
+    if (!modal || !modalTitle || !modalBody) return;
+
+    modalTitle.textContent = 'Manage Teams on Wheel';
+
+    const allTeams = this.getAllAvailableTeams();
+    const confirmedTeamIds = new Set();
+    const { tournamentMatchups = [] } = store.getState();
+    tournamentMatchups.forEach((m) => {
+      if (m.team1?.id) confirmedTeamIds.add(m.team1.id);
+      if (m.team2?.id) confirmedTeamIds.add(m.team2.id);
+    });
+
+    const inactiveTeams = allTeams.filter((t) => !this.activeWheelTeams.some((wt) => wt.id === t.id) && !confirmedTeamIds.has(t.id));
+
+    modalBody.innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:1.2rem;">
+        
+        <!-- Add New Team Form -->
+        <div style="background:rgba(12,18,30,0.9); border:1px solid rgba(0,229,255,0.3); border-radius:var(--radius-md); padding:1rem;">
+          <div style="font-family:var(--font-display); font-size:0.95rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; margin-bottom:0.5rem;">
+            ➕ Add New Team to Wheel
+          </div>
+          <div style="display:flex; gap:0.5rem; align-items:center;">
+            <input type="color" id="modal-wheel-team-color" value="#00e5ff" style="width:40px; height:38px; padding:2px; background:transparent; border:1px solid var(--border-subtle); border-radius:var(--radius-sm); cursor:pointer;" title="Choose Team Color">
+            <input type="text" id="modal-wheel-team-name" class="wheel-quick-input" placeholder="Enter team name (e.g. Red Bull, Ferrari)..." style="flex:1;" onkeydown="if(event.key==='Enter') window.tournamentWheel.submitModalQuickAdd()">
+            <button class="btn btn-cyan btn-sm" style="white-space:nowrap; padding:0.55rem 1rem; font-weight:800;" onclick="window.tournamentWheel.submitModalQuickAdd()">
+              + Add Team
+            </button>
+          </div>
+        </div>
+
+        <!-- Active Teams on Wheel with Remove Buttons -->
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem;">
+            <span style="font-family:var(--font-display); font-size:0.92rem; font-weight:800; color:#fff; text-transform:uppercase;">
+              🎯 Active Teams on Wheel (${this.activeWheelTeams.length})
+            </span>
+            <div style="display:flex; gap:0.4rem;">
+              <button class="btn btn-outline btn-sm" style="font-size:0.7rem; padding:0.2rem 0.5rem;" onclick="window.tournamentWheel.selectAllTeamsForWheel(); window.tournamentWheel.openTeamManagerModal();">Select All</button>
+              <button class="btn btn-outline btn-sm" style="font-size:0.7rem; padding:0.2rem 0.5rem;" onclick="window.tournamentWheel.deselectAllTeamsForWheel(); window.tournamentWheel.openTeamManagerModal();">Clear All</button>
+            </div>
+          </div>
+
+          ${this.activeWheelTeams.length === 0 ? `
+            <div style="text-align:center; padding:1.5rem; color:var(--text-muted); font-size:0.85rem; border:1px dashed var(--border-subtle); border-radius:var(--radius-sm);">
+              No teams on the wheel. Add a team above or select from available teams below.
+            </div>
+          ` : `
+            <div style="display:flex; flex-direction:column; gap:0.45rem; max-height:220px; overflow-y:auto; padding-right:0.3rem;">
+              ${this.activeWheelTeams.map((t) => `
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:0.6rem; background:rgba(15,22,36,0.95); border:1px solid rgba(0,229,255,0.3); border-left:4px solid ${t.color}; border-radius:var(--radius-sm); padding:0.45rem 0.75rem;">
+                  <div style="display:flex; align-items:center; gap:0.5rem;">
+                    <span style="font-family:var(--font-display); font-size:0.95rem; font-weight:800; color:#ffffff;">
+                      ${t.name}
+                    </span>
+                    <span style="font-size:0.65rem; color:var(--accent-cyan); background:rgba(0,229,255,0.1); padding:0.1rem 0.4rem; border-radius:var(--radius-pill); font-weight:800;">
+                      ON WHEEL
+                    </span>
+                  </div>
+                  <button class="btn btn-danger btn-sm" style="font-size:0.72rem; padding:0.25rem 0.6rem; font-weight:800;" onclick="window.tournamentWheel.removeTeamFromWheel('${t.id}'); window.tournamentWheel.openTeamManagerModal();">
+                    ✕ Remove
+                  </button>
+                </div>
+              `).join('')}
+            </div>
+          `}
+        </div>
+
+        <!-- Inactive / Available Teams to Add -->
+        ${inactiveTeams.length > 0 ? `
+          <div style="border-top:1px dashed var(--border-subtle); padding-top:0.8rem;">
+            <span style="font-family:var(--font-display); font-size:0.88rem; font-weight:800; color:var(--text-secondary); text-transform:uppercase; display:block; margin-bottom:0.5rem;">
+              ➕ Available Teams (Click to put onto wheel):
+            </span>
+            <div style="display:flex; flex-wrap:wrap; gap:0.45rem;">
+              ${inactiveTeams.map((t) => `
+                <button class="btn btn-outline btn-sm" style="border-left:3px solid ${t.color}; font-size:0.8rem; font-weight:700; color:#fff;" onclick="window.tournamentWheel.addTeamToWheel('${t.id}'); window.tournamentWheel.openTeamManagerModal();">
+                  + ${t.name}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        <div style="display:flex; justify-content:flex-end; margin-top:0.5rem;">
+          <button class="btn btn-cyan" onclick="window.app.closeModal()">
+            ✓ Done
+          </button>
+        </div>
+
+      </div>
+    `;
+
+    window.app.openModal();
+  }
+
   renderTournamentView(containerId = 'tournament-view') {
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -357,12 +470,15 @@ class TournamentWheelView {
                 <span>Remove Team Once Drawn</span>
               </label>
 
-              <div style="display:flex; gap:0.5rem;">
+              <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
                 <button class="btn btn-outline btn-sm" onclick="window.tournamentWheel.shuffleWheel()" title="Shuffle team slice order on the wheel" ${this.isSpinning || this.activeWheelTeams.length < 2 ? 'disabled' : ''}>
                   🔀 SHUFFLE
                 </button>
                 <button class="btn btn-outline btn-sm" onclick="window.tournamentWheel.resetWheelPool()" title="Restore all teams back to the wheel" ${this.isSpinning ? 'disabled' : ''}>
                   🔄 RESET POOL
+                </button>
+                <button class="btn btn-cyan btn-sm" onclick="window.tournamentWheel.openTeamManagerModal()" title="Manually add or remove teams from the wheel" style="font-weight:800; background:rgba(0,229,255,0.18); border:1px solid var(--accent-cyan); color:#ffffff; letter-spacing:0.5px;">
+                  ➕ +ADD TEAM
                 </button>
               </div>
             </div>
@@ -667,7 +783,7 @@ class TournamentWheelView {
       ctx.fillText('NO TEAMS ON WHEEL', center, center - 6);
       ctx.fillStyle = '#00e5ff';
       ctx.font = '600 12px "Inter", sans-serif';
-      ctx.fillText('Add or check teams below', center, center + 15);
+      ctx.fillText('Click +ADD TEAM to add teams', center, center + 15);
       ctx.restore();
       return;
     }
