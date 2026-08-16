@@ -698,7 +698,7 @@ class ViewerView {
 
     if (modalCard) modalCard.classList.remove('modal-card-xl');
 
-    modalTitle.innerHTML = `🏁 ${racer.name}`;
+    modalTitle.textContent = racer.name;
     const photoSrc = racer.photoUrl || racer.avatar;
     const soldTeam = racer.soldToTeamId ? teams.find((t) => t.id === racer.soldToTeamId) : null;
     const racerTier = racer.tier || racer.category || 'Tier 1';
