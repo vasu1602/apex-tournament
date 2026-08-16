@@ -6,6 +6,9 @@ class SyncBridge {
     this.channel = null;
     this.mqttClient = null;
     this.eventSource = null;
+    this.peer = null;
+    this.peerHostConn = null;
+    this.peerConnections = new Set();
     this.isCloudConnected = false;
     this.isLocalServerConnected = false;
     this.isApplyingRemoteState = false;
@@ -68,6 +71,9 @@ class SyncBridge {
     // 4. Connect to Global Cloud MQTT over WebSockets (for Vercel & Internet)
     this.initCloudMqtt();
 
+    // 5. Connect to Direct WebRTC Mesh Cloud Sync (for iPhones, Androids, Tablets & Remote PCs)
+    this.initWebRtc();
+
     // Trigger initial sync requests
     setTimeout(() => this.requestSync(), 300);
     setTimeout(() => this.requestSync(), 1200);
@@ -86,6 +92,93 @@ class SyncBridge {
         this.mqttClient.publish(`${this.mqttTopic}/events`, JSON.stringify({ type: 'SYNC_REQUEST' }), { qos: 1 });
       } catch (e) {}
     }
+    if (this.peerHostConn && this.peerHostConn.open) {
+      try {
+        this.peerHostConn.send({ type: 'SYNC_REQUEST' });
+      } catch (e) {}
+    }
+  }
+
+  // --- WEBRTC DIRECT CLOUD P2P MESH (For 100% Mobile & Cross-Device Sync) ---
+  initWebRtc() {
+    if (typeof window.Peer === 'undefined') {
+      setTimeout(() => this.initWebRtc(), 500);
+      return;
+    }
+
+    try {
+      const hostId = `apex_grandprix_${this.roomId}_host`;
+      const isCandidateAdmin = store.getState().currentUser?.isAuthenticated;
+
+      if (isCandidateAdmin) {
+        this.peer = new window.Peer(hostId);
+        this.peer.on('open', () => {
+          this.updateSyncStatus(true, `Cloud Host Active (${this.roomId})`);
+        });
+
+        this.peer.on('connection', (conn) => {
+          this.peerConnections.add(conn);
+          conn.on('open', () => {
+            conn.send({
+              type: 'STATE_SYNC',
+              payload: store.getState()
+            });
+          });
+          conn.on('data', (data) => {
+            this.handleMessage(data);
+          });
+          conn.on('close', () => {
+            this.peerConnections.delete(conn);
+          });
+        });
+
+        this.peer.on('error', (err) => {
+          if (err.type === 'unavailable-id') {
+            this.connectAsPeerViewer(hostId);
+          }
+        });
+      } else {
+        this.connectAsPeerViewer(hostId);
+      }
+    } catch (err) {
+      console.warn('WebRTC notice:', err);
+    }
+  }
+
+  connectAsPeerViewer(hostId) {
+    try {
+      const viewerId = `apex_v_${Math.random().toString(36).substr(2, 8)}`;
+      this.peer = new window.Peer(viewerId);
+
+      this.peer.on('open', () => {
+        this.connectToHost(hostId);
+      });
+
+      this.peer.on('error', (e) => {
+        console.warn('Peer viewer notice:', e);
+      });
+    } catch (e) {}
+  }
+
+  connectToHost(hostId) {
+    if (!this.peer || this.peer.destroyed) return;
+    try {
+      const conn = this.peer.connect(hostId, { reliable: true });
+      conn.on('open', () => {
+        this.peerHostConn = conn;
+        this.updateSyncStatus(true, `Live P2P Cloud Link Active (${this.roomId})`);
+        conn.send({ type: 'SYNC_REQUEST' });
+      });
+
+      conn.on('data', (data) => {
+        this.handleMessage(data);
+      });
+
+      conn.on('close', () => {
+        this.peerHostConn = null;
+        setTimeout(() => this.connectToHost(hostId), 3500);
+      });
+    } catch (e) {}
   }
 
   // --- SERVER & CLOUD API SYNC (Works on Vercel + Local Wi-Fi) ---
@@ -293,6 +386,20 @@ class SyncBridge {
         console.warn('[Cloud Sync] Publish notice:', err);
       }
     }
+
+    // 4. Send over Direct WebRTC Mesh to all connected mobile phones & devices
+    if (this.peerConnections && this.peerConnections.size > 0) {
+      this.peerConnections.forEach((conn) => {
+        if (conn.open) {
+          try {
+            conn.send({
+              type: 'STATE_SYNC',
+              payload: payloadToSync
+            });
+          } catch (e) {}
+        }
+      });
+    }
   }
 
   broadcastBoxEvent(payload) {
@@ -321,6 +428,17 @@ class SyncBridge {
       } catch (err) {
         console.warn('[Cloud Sync] Box event publish notice:', err);
       }
+    }
+
+    // 4. Direct WebRTC Mesh Event to all phones and connected viewers
+    if (this.peerConnections && this.peerConnections.size > 0) {
+      this.peerConnections.forEach((conn) => {
+        if (conn.open) {
+          try {
+            conn.send(eventData);
+          } catch (e) {}
+        }
+      });
     }
   }
 
