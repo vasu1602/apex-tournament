@@ -434,7 +434,7 @@ class TournamentBoxView {
             ` : `
               <div class="spectator-vault-indicator">
                 <span class="spectator-pulse-dot"></span>
-                <span>${this.isDrawing ? '⚡ VAULT OPENING IN PROGRESS...' : 'LIVE TOURNAMENT ARENA • RACE CONTROL'}</span>
+                <span>${this.isDrawing ? '⚡ VAULT OPENING IN PROGRESS...' : 'LIVE TOURNAMENT ARENA'}</span>
               </div>
             `}
           </div>
