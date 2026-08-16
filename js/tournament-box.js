@@ -571,11 +571,7 @@ class TournamentBoxView {
                   ` : ''}
                 </div>
               </div>
-            ` : `
-              <div style="text-align:center; font-size:0.78rem; color:var(--text-muted); margin-top:0.6rem;">
-                ${this.pendingTeam1 && !this.pendingTeam2 ? '🏎️ Crew 1 selected! Awaiting Crew 2 draw...' : (this.pendingTeam1 && this.pendingTeam2 ? '✅ Matchup locked and added to official fixtures!' : '📡 Live draw updates appear automatically as Race Admin draws teams')}
-              </div>
-            `}
+            ` : ''}
           </div>
 
           <!-- SAVED OFFICIAL TOURNAMENT FIXTURES (LIVE VIEW FOR EVERYONE) -->
