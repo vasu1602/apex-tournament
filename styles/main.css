@@ -148,8 +148,8 @@ html, body {
 }
 
 .brand-logo-box {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -158,15 +158,16 @@ html, body {
   box-shadow: none;
 }
 
-.brand-logo-svg {
+.brand-logo-img {
   width: 28px;
   height: 28px;
+  object-fit: contain;
   filter: drop-shadow(0 0 6px rgba(0, 242, 254, 0.45));
-  overflow: visible;
   transition: transform var(--transition-fast), filter var(--transition-fast);
 }
 
-.brand-wrapper:hover .brand-logo-svg {
+.brand-wrapper:hover .brand-logo-img {
+  transform: scale(1.08);
   filter: drop-shadow(0 0 10px var(--accent-cyan)) drop-shadow(0 0 8px var(--accent-red));
 }
 

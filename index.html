@@ -27,51 +27,7 @@
     <header class="app-header">
       <div class="brand-wrapper" onclick="window.app.switchTab('live-arena-view')">
         <div class="brand-logo-box">
-          <svg class="brand-logo-svg" viewBox="0 0 120 120" width="28" height="28" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <linearGradient id="navNeonApex" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#ff1744" />
-                <stop offset="50%" stop-color="#ff5252" />
-                <stop offset="100%" stop-color="#00e5ff" />
-              </linearGradient>
-              <linearGradient id="navCyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#00e5ff" />
-                <stop offset="100%" stop-color="#0088ff" />
-              </linearGradient>
-              <linearGradient id="navCrimsonGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#ff1744" />
-                <stop offset="100%" stop-color="#ff5252" />
-              </linearGradient>
-            </defs>
-
-            <!-- 1. ROTATING OUTER CORNERS & TELEMETRY RING (Clockwise 360 deg) -->
-            <g class="logo-rotating-border">
-              <circle cx="60" cy="60" r="50" fill="none" stroke="url(#navNeonApex)" stroke-width="3.5" stroke-dasharray="16 10 26 10" stroke-linecap="round" />
-              <!-- 4 Rotating Corner Orbit Notches -->
-              <polygon points="60,6 65,16 55,16" fill="#00e5ff" />
-              <polygon points="60,114 65,104 55,104" fill="#ff1744" />
-              <polygon points="114,60 104,65 104,55" fill="#00e5ff" />
-              <polygon points="6,60 16,65 16,55" fill="#ff1744" />
-              <!-- Corner Chevrons -->
-              <path d="M22,22 L32,15 L32,29 Z" fill="#ff1744" />
-              <path d="M98,22 L88,15 L88,29 Z" fill="#00e5ff" />
-              <path d="M98,98 L88,105 L88,91 Z" fill="#00e5ff" />
-              <path d="M22,98 L32,105 L32,91 Z" fill="#ff1744" />
-            </g>
-
-            <!-- 2. ROTATING INNER LOGO CORE (Clockwise 360 deg) -->
-            <g class="logo-rotating-core">
-              <path d="M60,20 L40,78 L52,78 L58,58 L62,58 L60,20 Z" fill="url(#navCrimsonGrad)" />
-              <path d="M60,20 L80,78 L68,78 L62,58 L58,58 L60,20 Z" fill="url(#navCyanGrad)" />
-              <path d="M60,100 L40,42 L52,42 L58,62 L62,62 L60,100 Z" fill="url(#navCyanGrad)" opacity="0.85" />
-              <path d="M60,100 L80,42 L68,42 L62,62 L58,62 L60,100 Z" fill="url(#navCrimsonGrad)" opacity="0.85" />
-              <circle cx="60" cy="60" r="14" fill="#060910" stroke="url(#navNeonApex)" stroke-width="2.5" />
-              <polygon points="60,48 64,56 72,60 64,64 60,72 56,64 48,60 56,56" fill="#ffffff" />
-            </g>
-
-            <!-- Center Spark -->
-            <circle cx="60" cy="60" r="4.5" fill="#00e5ff" />
-          </svg>
+          <img src="favicon.svg" alt="Apex Velocity" class="brand-logo-img">
         </div>
         <div class="brand-text">
           <span class="brand-title">Apex Velocity</span>
