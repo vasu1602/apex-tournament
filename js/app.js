@@ -6,7 +6,6 @@ import { sync } from './sync.js';
 import { viewerView } from './viewer-view.js';
 import { adminView } from './admin-view.js';
 import { imageCropper } from './image-cropper.js';
-import { tournamentWheel } from './tournament-wheel.js';
 
 class AppController {
   constructor() {
