@@ -6,6 +6,7 @@ import { sync } from './sync.js';
 import { viewerView } from './viewer-view.js';
 import { adminView } from './admin-view.js';
 import { imageCropper } from './image-cropper.js';
+import { tournamentWheel } from './tournament-wheel.js';
 
 class AppController {
   constructor() {
@@ -18,6 +19,7 @@ class AppController {
     this.canvasBg = initCanvasBackground('bg-canvas');
     viewerView.init();
     adminView.init();
+    tournamentWheel.init();
 
     // 2. Subscribe to state updates
     store.subscribe((state, meta) => {
@@ -94,6 +96,14 @@ class AppController {
     });
 
     this.renderCurrentView();
+
+    if (tabId === 'tournament-view') {
+      setTimeout(() => {
+        tournamentWheel.setupCanvas();
+        tournamentWheel.drawWheel();
+      }, 40);
+    }
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -136,6 +146,7 @@ class AppController {
     viewerView.renderLiveStage('live-arena-view');
     viewerView.renderTeamsGrid('teams-container');
     viewerView.renderRacersGrid('racers-container');
+    tournamentWheel.renderTournamentView('tournament-view');
 
     // Render admin view only if authenticated
     if (isAuth) {

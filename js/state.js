@@ -51,6 +51,7 @@ export const INITIAL_STATE = {
     status: 'idle'
   },
   auctionHistory: [],
+  tournamentMatchups: [],
   currentUser: {
     isAuthenticated: false,
     role: 'viewer',
@@ -116,6 +117,7 @@ class StateStore {
         accessCodes: this.state.accessCodes,
         activeAuction: this.state.activeAuction,
         auctionHistory: this.state.auctionHistory,
+        tournamentMatchups: this.state.tournamentMatchups || [],
         currentUser: this.state.currentUser
       };
       if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
@@ -160,6 +162,7 @@ class StateStore {
       accessCodes: Array.isArray(newState.accessCodes) ? newState.accessCodes : (this.state.accessCodes || DEFAULT_ACCESS_CODES),
       activeAuction: newState.activeAuction || this.state.activeAuction,
       auctionHistory: Array.isArray(newState.auctionHistory) ? newState.auctionHistory : this.state.auctionHistory,
+      tournamentMatchups: Array.isArray(newState.tournamentMatchups) ? newState.tournamentMatchups : (this.state.tournamentMatchups || []),
       currentUser: currentSession
     };
 
@@ -173,6 +176,7 @@ class StateStore {
           accessCodes: this.state.accessCodes,
           activeAuction: this.state.activeAuction,
           auctionHistory: this.state.auctionHistory,
+          tournamentMatchups: this.state.tournamentMatchups,
           currentUser: currentSession
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToPersist));
@@ -852,6 +856,53 @@ class StateStore {
     } catch (e) {
       return { success: false, error: e.message };
     }
+  }
+
+  // --- TOURNAMENT MATCHUP SYSTEM ---
+  addTournamentMatchup(team1Id, team2Id) {
+    const team1 = this.state.teams.find((t) => t.id === team1Id);
+    const team2 = this.state.teams.find((t) => t.id === team2Id);
+    if (!team1 || !team2) return { success: false, message: 'Invalid team selections' };
+
+    if (!Array.isArray(this.state.tournamentMatchups)) {
+      this.state.tournamentMatchups = [];
+    }
+
+    const newMatchup = {
+      id: 'match_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      matchNumber: this.state.tournamentMatchups.length + 1,
+      team1: { id: team1.id, name: team1.name, color: team1.color, logoUrl: team1.logoUrl, avatar: team1.avatar },
+      team2: { id: team2.id, name: team2.name, color: team2.color, logoUrl: team2.logoUrl, avatar: team2.avatar },
+      winnerId: null,
+      createdAt: new Date().toISOString()
+    };
+
+    this.state.tournamentMatchups.push(newMatchup);
+    this.saveState();
+    return { success: true, matchup: newMatchup };
+  }
+
+  removeTournamentMatchup(matchupId) {
+    if (!Array.isArray(this.state.tournamentMatchups)) return;
+    this.state.tournamentMatchups = this.state.tournamentMatchups.filter((m) => m.id !== matchupId);
+    this.state.tournamentMatchups.forEach((m, idx) => {
+      m.matchNumber = idx + 1;
+    });
+    this.saveState();
+  }
+
+  setTournamentMatchupWinner(matchupId, winnerId) {
+    if (!Array.isArray(this.state.tournamentMatchups)) return;
+    const match = this.state.tournamentMatchups.find((m) => m.id === matchupId);
+    if (match) {
+      match.winnerId = match.winnerId === winnerId ? null : winnerId;
+      this.saveState();
+    }
+  }
+
+  clearTournamentMatchups() {
+    this.state.tournamentMatchups = [];
+    this.saveState();
   }
 }
 
