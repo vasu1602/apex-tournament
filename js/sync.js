@@ -180,6 +180,7 @@ class SyncBridge {
       racersCount: remoteData.racers?.length,
       teamsCount: remoteData.teams?.length,
       historyCount: remoteData.auctionHistory?.length,
+      matchupsCount: remoteData.tournamentMatchups?.length,
       timestamp: remoteData.updatedAt
     });
 
@@ -202,6 +203,7 @@ class SyncBridge {
       racersCount: fullState.racers?.length,
       teamsCount: fullState.teams?.length,
       historyCount: fullState.auctionHistory?.length,
+      matchupsCount: fullState.tournamentMatchups?.length,
       timestamp: Date.now()
     });
     this.lastSyncedHash = stateHash;
@@ -213,6 +215,7 @@ class SyncBridge {
       accessCodes: fullState.accessCodes,
       activeAuction: fullState.activeAuction,
       auctionHistory: fullState.auctionHistory,
+      tournamentMatchups: fullState.tournamentMatchups || [],
       updatedAt: Date.now(),
       updatedBy: fullState.currentUser?.adminName || 'Admin'
     };
