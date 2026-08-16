@@ -439,7 +439,7 @@ class TournamentBoxView {
             `}
           </div>
 
-          <!-- ADMIN ONLY: BOX TEAM MANAGER (ADD / DELETE TEAMS FROM THE BOX) -->
+          <!-- ADMIN ONLY: BOX TEAMS LIST -->
           ${isAdmin ? `
             <div class="box-teams-manager-card">
               <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-subtle); padding-bottom:0.5rem;">
@@ -448,20 +448,8 @@ class TournamentBoxView {
                 </span>
               </div>
 
-              <!-- Add Team Form -->
-              <div style="display:flex; flex-direction:column; gap:0.35rem;">
-                <span style="font-size:0.75rem; color:var(--text-secondary); font-weight:700;">➕ ADD TEAM TO BOX:</span>
-                <div class="box-quick-add-row">
-                  <input type="color" id="box-team-input-color" value="#00e5ff" style="width:38px; height:36px; padding:2px; background:transparent; border:1px solid var(--border-subtle); border-radius:var(--radius-sm); cursor:pointer;" title="Choose Team Color">
-                  <input type="text" id="box-team-input-name" class="box-quick-input" placeholder="Type team name & hit Enter..." onkeydown="if(event.key==='Enter') window.tournamentBox.submitAddTeam()">
-                  <button class="btn btn-cyan btn-sm" style="white-space:nowrap; padding:0.45rem 0.95rem; font-weight:800;" onclick="window.tournamentBox.submitAddTeam()">
-                    + Add to Box
-                  </button>
-                </div>
-              </div>
-
-              <!-- Roster List of Teams with Direct Toggle & Delete -->
-              <div style="display:flex; flex-direction:column; gap:0.45rem; max-height:220px; overflow-y:auto; padding-right:0.3rem; margin-top:0.3rem;">
+              <!-- Roster List of Teams with Checkbox & Delete -->
+              <div style="display:flex; flex-direction:column; gap:0.45rem; max-height:240px; overflow-y:auto; padding-right:0.3rem; margin-top:0.3rem;">
                 ${allTeams.map((t) => {
                   const isInBox = this.activeBoxTeams.some((bt) => bt.id === t.id);
                   const isPaired = confirmedTeamIds.has(t.id);
@@ -475,25 +463,9 @@ class TournamentBoxView {
                         </span>
                       </label>
 
-                      <div style="display:flex; align-items:center; gap:0.5rem;">
-                        ${isPaired ? `
-                          <span style="font-size:0.68rem; color:var(--accent-gold); background:rgba(255,184,0,0.15); padding:0.15rem 0.45rem; border-radius:var(--radius-pill); font-weight:800;">
-                            PAIRED
-                          </span>
-                        ` : (isInBox ? `
-                          <span style="font-size:0.68rem; color:var(--accent-cyan); background:rgba(0,229,255,0.12); padding:0.15rem 0.45rem; border-radius:var(--radius-pill); font-weight:800;">
-                            IN BOX
-                          </span>
-                        ` : `
-                          <span style="font-size:0.68rem; color:var(--text-muted); background:rgba(255,255,255,0.05); padding:0.15rem 0.45rem; border-radius:var(--radius-pill); font-weight:700;">
-                            EXCLUDED
-                          </span>
-                        `)}
-
-                        <button class="btn-icon" style="color:var(--text-muted); width:26px; height:26px; font-size:0.78rem;" onclick="window.tournamentBox.deleteTeamPermanently('${t.id}')" title="Delete ${t.name}">
-                          🗑️
-                        </button>
-                      </div>
+                      <button class="btn-icon" style="color:var(--text-muted); width:26px; height:26px; font-size:0.78rem;" onclick="window.tournamentBox.deleteTeamPermanently('${t.id}')" title="Delete ${t.name}">
+                        🗑️
+                      </button>
 
                     </div>
                   `;
