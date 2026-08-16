@@ -388,7 +388,7 @@ export class ImageCropper {
     );
   }
 
-  getCroppedDataURL(outputSize = 512) {
+  getCroppedDataURL(outputSize = 240) {
     if (!this.imageLoaded) return null;
 
     const outCanvas = document.createElement('canvas');
@@ -409,11 +409,11 @@ export class ImageCropper {
     outCtx.drawImage(this.image, -this.image.width / 2, -this.image.height / 2);
     outCtx.restore();
 
-    return outCanvas.toDataURL('image/jpeg', 0.92);
+    return outCanvas.toDataURL('image/jpeg', 0.82);
   }
 
   applyCrop() {
-    const croppedData = this.getCroppedDataURL(512);
+    const croppedData = this.getCroppedDataURL(240);
     if (croppedData && this.onSaveCallback) {
       this.onSaveCallback(croppedData);
     }

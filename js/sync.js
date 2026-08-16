@@ -56,27 +56,43 @@ class SyncBridge {
       }
     });
 
+    // Request sync when window gains focus or tab becomes visible
+    window.addEventListener('focus', () => this.requestSync());
+    window.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') this.requestSync();
+    });
+
     // 3. Connect to Local Server Sync (SSE / HTTP API for Wi-Fi & LAN)
     this.initLocalServerSync();
 
     // 4. Connect to Global Cloud MQTT over WebSockets (for Vercel & Internet)
     this.initCloudMqtt();
 
+    // Trigger initial sync request after 500ms
+    setTimeout(() => this.requestSync(), 500);
+
     window.syncBridge = this;
+  }
+
+  requestSync() {
+    if (this.channel) {
+      try {
+        this.channel.postMessage({ type: 'SYNC_REQUEST' });
+      } catch (e) {}
+    }
+    if (this.mqttClient && this.mqttClient.connected) {
+      try {
+        this.mqttClient.publish(`${this.mqttTopic}/events`, JSON.stringify({ type: 'SYNC_REQUEST' }), { qos: 1 });
+      } catch (e) {}
+    }
   }
 
   // --- LOCAL SERVER SYNC (For Wi-Fi, LAN, PC + Mobile on same server) ---
   initLocalServerSync() {
     this.pollLocalState();
 
-    // Re-check on tab focus / visibility change
-    window.addEventListener('focus', () => this.pollLocalState());
-    window.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') this.pollLocalState();
-    });
-
     // Regular interval poll fallback
-    setInterval(() => this.pollLocalState(), 1500);
+    setInterval(() => this.pollLocalState(), 2000);
 
     // Listen for live Server-Sent Events from local server
     if (typeof EventSource !== 'undefined') {
@@ -117,22 +133,25 @@ class SyncBridge {
   }
 
   // --- GLOBAL CLOUD WEBSOCKET SYNC (MQTT Broker for Vercel) ---
-  initCloudMqtt() {
+  initCloudMqtt(brokerIndex = 0) {
     if (typeof window.mqtt === 'undefined') {
-      // Retry loading if CDN script is asynchronous
-      setTimeout(() => this.initCloudMqtt(), 350);
+      setTimeout(() => this.initCloudMqtt(brokerIndex), 350);
       return;
     }
 
+    const brokers = [
+      'wss://broker.emqx.io:8084/mqtt',
+      'wss://broker.hivemq.com:8884/mqtt'
+    ];
+    const brokerUrl = brokers[brokerIndex % brokers.length];
+
     try {
-      // Connect to secure public MQTT WebSocket broker
-      const brokerUrl = 'wss://broker.emqx.io:8084/mqtt';
       const clientId = 'apex_' + Math.random().toString(16).substr(2, 8);
 
       this.mqttClient = window.mqtt.connect(brokerUrl, {
         clientId,
         clean: true,
-        connectTimeout: 5000,
+        connectTimeout: 4000,
         reconnectPeriod: 3000
       });
 
@@ -143,12 +162,15 @@ class SyncBridge {
         // Subscribe to tournament topics
         this.mqttClient.subscribe(this.mqttTopic, { qos: 1 });
         this.mqttClient.subscribe(`${this.mqttTopic}/events`, { qos: 1 });
+
+        // Request latest state immediately upon connecting
+        this.requestSync();
       });
 
       this.mqttClient.on('message', (topic, message) => {
         try {
           const payload = JSON.parse(message.toString());
-          if (topic === `${this.mqttTopic}/events` || payload?.type === 'BOX_EVENT') {
+          if (topic === `${this.mqttTopic}/events` || payload?.type === 'BOX_EVENT' || payload?.type === 'SYNC_REQUEST') {
             this.handleMessage(payload);
           } else if (topic === this.mqttTopic && payload?.state) {
             this.handleRemoteStateUpdate(payload.state);
@@ -293,7 +315,13 @@ class SyncBridge {
   handleMessage(data) {
     if (!data || !data.type) return;
 
-    if (data.type === 'STATE_SYNC' && data.payload && !this.isApplyingRemoteState) {
+    if (data.type === 'SYNC_REQUEST') {
+      const state = store.getState();
+      const isAdmin = Boolean(state.currentUser && state.currentUser.isAuthenticated);
+      if (isAdmin || (state.racers && state.racers.length > 0) || (state.teams && state.teams.length > 0)) {
+        this.broadcastState(state);
+      }
+    } else if (data.type === 'STATE_SYNC' && data.payload && !this.isApplyingRemoteState) {
       this.handleRemoteStateUpdate(data.payload);
     } else if (data.type === 'BOX_EVENT' && data.payload) {
       if (window.tournamentBox) {
