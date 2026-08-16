@@ -157,8 +157,25 @@ const server = http.createServer((req, res) => {
   });
 });
 
+import os from 'os';
+
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`[Apex Real-Time Server] Listening on http://0.0.0.0:${PORT}`);
-  console.log(`[Apex Real-Time Server] PC Admin URL: http://localhost:${PORT}`);
-  console.log(`[Apex Real-Time Server] Mobile Viewer URL: http://<YOUR_WIFI_IP>:${PORT}`);
+  const interfaces = os.networkInterfaces();
+  let localIp = 'localhost';
+  for (const name of Object.keys(interfaces)) {
+    for (const net of interfaces[name]) {
+      if (net.family === 'IPv4' && !net.internal) {
+        localIp = net.address;
+        break;
+      }
+    }
+  }
+
+  console.log(`====================================================`);
+  console.log(`🏁 APEX VELOCITY REAL-TIME TOURNAMENT SERVER ONLINE`);
+  console.log(`====================================================`);
+  console.log(`💻 Local Host (PC / Laptop):  http://localhost:${PORT}`);
+  console.log(`📱 All Devices (Admin & Viewer): http://${localIp}:${PORT}`);
+  console.log(`⚡ Full Admin Access enabled for all devices (Mobile, PC, Tablet)`);
+  console.log(`====================================================`);
 });
