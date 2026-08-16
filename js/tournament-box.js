@@ -66,6 +66,14 @@ class TournamentBoxView {
 
     const unMatchedTeams = allTeams.filter((t) => !confirmedTeamIds.has(t.id));
 
+    // Automatically clear pending slots if they are already confirmed in matchups
+    if (this.pendingTeam1 && confirmedTeamIds.has(this.pendingTeam1.id)) {
+      this.pendingTeam1 = null;
+    }
+    if (this.pendingTeam2 && confirmedTeamIds.has(this.pendingTeam2.id)) {
+      this.pendingTeam2 = null;
+    }
+
     if (forceReset || this.activeBoxTeams.length === 0) {
       this.activeBoxTeams = unMatchedTeams.map((t, idx) => ({
         id: t.id,
@@ -224,6 +232,12 @@ class TournamentBoxView {
         if (drawnTeam) {
           this.activeBoxTeams = this.activeBoxTeams.filter((t) => t.id !== drawnTeam.id);
         }
+        // Auto-clear slots on viewer after 1.2s celebration so it's fresh for next matchup!
+        setTimeout(() => {
+          this.pendingTeam1 = null;
+          this.pendingTeam2 = null;
+          this.renderTournamentView();
+        }, 1200);
       }
       this.boxState = 'idle';
       this.emergingTeam = null;
@@ -242,15 +256,20 @@ class TournamentBoxView {
     if (!currentUser?.isAuthenticated) return;
     if (!this.pendingTeam1 || !this.pendingTeam2) return;
 
-    const team1Id = this.pendingTeam1.id;
-    const team2Id = this.pendingTeam2.id;
+    const team1 = this.pendingTeam1;
+    const team2 = this.pendingTeam2;
 
-    const res = store.addTournamentMatchup(team1Id, team2Id);
+    const res = store.addTournamentMatchup(team1.id, team2.id);
     if (res.success) {
-      if (window.app) window.app.showToast(`⚡ Match #${res.matchup.matchNumber}: ${this.pendingTeam1.name} VS ${this.pendingTeam2.name} locked & broadcasted!`, 'success');
-      this.pendingTeam1 = null;
-      this.pendingTeam2 = null;
-      this.renderTournamentView();
+      if (window.app) window.app.showToast(`⚡ Match #${res.matchup.matchNumber}: ${team1.name} VS ${team2.name} locked & broadcasted!`, 'success');
+      
+      // Auto-clear slots on all viewers and admin after brief celebration
+      setTimeout(() => {
+        this.pendingTeam1 = null;
+        this.pendingTeam2 = null;
+        sync.broadcastBoxEvent({ action: 'CLEAR_SLOTS' });
+        this.renderTournamentView();
+      }, 1200);
     }
   }
 
