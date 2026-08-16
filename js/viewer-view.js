@@ -321,7 +321,7 @@ class ViewerView {
 
               return `
                 <div class="racer-card" style="border-top: 3px solid ${isSold ? (soldTeam ? soldTeam.color : 'var(--accent-gold)') : 'var(--accent-red)'};">
-                  <div class="racer-card-image-box" style="height: 180px;">
+                  <div class="racer-card-image-box">
                     <span class="racer-card-cat-badge tier-badge-${tierCode}">${racerTier}</span>
                     <span class="racer-status-badge badge-${racer.status} racer-card-status-badge">
                       ${isSold ? 'SOLD' : 'UNSOLD'}

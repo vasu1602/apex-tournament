@@ -566,4 +566,8 @@ html, body {
   .app-main {
     padding: 1rem 0.75rem 3rem;
   }
+  .racer-card-image-box {
+    aspect-ratio: 16 / 11;
+    min-height: 230px;
+  }
 }
