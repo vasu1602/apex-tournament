@@ -281,7 +281,7 @@ class TournamentBoxView {
     const team1 = this.pendingTeam1;
     const team2 = this.pendingTeam2;
 
-    const res = store.addTournamentMatchup(team1.id, team2.id, activeRound.id);
+    const res = store.addTournamentMatchup(team1, team2, activeRound.id);
     if (res.success) {
       if (window.app) window.app.showToast(`⚡ Match #${res.matchup.matchNumber} (${activeRound.name}): ${team1.name} VS ${team2.name} locked!`, 'success');
       

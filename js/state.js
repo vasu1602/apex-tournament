@@ -944,9 +944,37 @@ class StateStore {
     }
   }
 
-  addTournamentMatchup(team1Id, team2Id, roundId = null) {
-    const team1 = this.state.teams.find((t) => t.id === team1Id);
-    const team2 = this.state.teams.find((t) => t.id === team2Id);
+  addTournamentMatchup(team1Input, team2Input, roundId = null) {
+    const resolveTeam = (input) => {
+      if (!input) return null;
+      if (typeof input === 'object' && input.name) {
+        return {
+          id: input.id || ('team_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4)),
+          name: input.name,
+          color: input.color || '#00e5ff',
+          logoUrl: input.logoUrl || null,
+          avatar: input.avatar || null
+        };
+      }
+      const id = String(input);
+      const foundInTeams = (this.state.teams || []).find((t) => t.id === id);
+      if (foundInTeams) return foundInTeams;
+
+      const defaultPresets = [
+        { id: 't_empire', name: 'Empire Imports', color: '#ff1744' },
+        { id: 't_autoexotic', name: 'Auto Exotic', color: '#0055ff' },
+        { id: 't_soochi', name: 'Soochi', color: '#ba68c8' },
+        { id: 't_amore', name: 'Amore', color: '#ad1457' },
+        { id: 't_luxary', name: 'Luxary Autos', color: '#9e9d24' },
+        { id: 't_beenys', name: 'Beenys', color: '#8e24aa' }
+      ];
+      const foundInPreset = defaultPresets.find((t) => t.id === id);
+      if (foundInPreset) return foundInPreset;
+      return { id: id, name: 'Team ' + id, color: '#00e5ff', logoUrl: null, avatar: null };
+    };
+
+    const team1 = resolveTeam(team1Input);
+    const team2 = resolveTeam(team2Input);
     if (!team1 || !team2) return { success: false, message: 'Invalid team selections' };
 
     if (!Array.isArray(this.state.tournamentRounds) || this.state.tournamentRounds.length === 0) {
@@ -972,8 +1000,8 @@ class StateStore {
       id: 'match_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
       roundId: targetRound.id,
       matchNumber: roundMatchups.length + 1,
-      team1: { id: team1.id, name: team1.name, color: team1.color, logoUrl: team1.logoUrl, avatar: team1.avatar },
-      team2: { id: team2.id, name: team2.name, color: team2.color, logoUrl: team2.logoUrl, avatar: team2.avatar },
+      team1: { id: team1.id, name: team1.name, color: team1.color, logoUrl: team1.logoUrl || null, avatar: team1.avatar || null },
+      team2: { id: team2.id, name: team2.name, color: team2.color, logoUrl: team2.logoUrl || null, avatar: team2.avatar || null },
       winnerId: null,
       createdAt: new Date().toISOString()
     };
