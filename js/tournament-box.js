@@ -1,6 +1,7 @@
 import { store } from './state.js';
 import { soundFX } from './audio.js';
 import { viewerView } from './viewer-view.js';
+import { sync } from './sync.js';
 
 const DEFAULT_CHAMPIONSHIP_TEAMS = [
   { id: 't_empire', name: 'Empire Imports', color: '#ff1744' },
@@ -118,6 +119,9 @@ class TournamentBoxView {
     this.emergingTeam = null;
     this.renderTournamentView();
 
+    // 1. Broadcast shake start event to all viewers immediately!
+    sync.broadcastBoxEvent({ action: 'START_SHAKE' });
+
     // Sound: rumble / tension
     soundFX.play('bid');
     const shakeInterval = setInterval(() => {
@@ -133,6 +137,15 @@ class TournamentBoxView {
       const drawnTeam = this.activeBoxTeams[randomIndex];
       this.emergingTeam = drawnTeam;
       this.boxState = 'open';
+
+      const targetSlot = !this.pendingTeam1 ? 1 : 2;
+
+      // 2. Broadcast team reveal event to all viewers!
+      sync.broadcastBoxEvent({
+        action: 'REVEAL_TEAM',
+        drawnTeam,
+        slot: targetSlot
+      });
 
       // Fanfare & Confetti
       soundFX.play('hammer');
@@ -162,6 +175,13 @@ class TournamentBoxView {
           this.activeBoxTeams = this.activeBoxTeams.filter((t) => t.id !== drawnTeam.id);
         }
 
+        // 3. Broadcast final slot in event to viewers!
+        sync.broadcastBoxEvent({
+          action: 'SLOT_IN',
+          drawnTeam,
+          slot: targetSlot
+        });
+
         this.boxState = 'idle';
         this.emergingTeam = null;
         this.isDrawing = false;
@@ -169,6 +189,52 @@ class TournamentBoxView {
       }, 1000);
 
     }, 1100);
+  }
+
+  // --- HANDLE LIVE BOX EVENTS ON VIEWERS' SCREENS ---
+  handleRemoteBoxEvent(payload) {
+    if (!payload || !payload.action) return;
+
+    const { currentUser } = store.getState();
+    const isAdmin = Boolean(currentUser && currentUser.isAuthenticated);
+    // If this client is currently the active drawing admin, ignore echoing own event
+    if (isAdmin && this.isDrawing) return;
+
+    if (payload.action === 'START_SHAKE') {
+      this.isDrawing = true;
+      this.boxState = 'shaking';
+      this.emergingTeam = null;
+      soundFX.play('bid');
+      this.renderTournamentView();
+    } else if (payload.action === 'REVEAL_TEAM') {
+      this.boxState = 'open';
+      this.emergingTeam = payload.drawnTeam;
+      soundFX.play('hammer');
+      viewerView.triggerConfetti();
+      this.renderTournamentView();
+    } else if (payload.action === 'SLOT_IN') {
+      const { drawnTeam, slot } = payload;
+      if (slot === 1) {
+        this.pendingTeam1 = drawnTeam;
+        if (drawnTeam) {
+          this.activeBoxTeams = this.activeBoxTeams.filter((t) => t.id !== drawnTeam.id);
+        }
+      } else if (slot === 2) {
+        this.pendingTeam2 = drawnTeam;
+        if (drawnTeam) {
+          this.activeBoxTeams = this.activeBoxTeams.filter((t) => t.id !== drawnTeam.id);
+        }
+      }
+      this.boxState = 'idle';
+      this.emergingTeam = null;
+      this.isDrawing = false;
+      this.renderTournamentView();
+    } else if (payload.action === 'CLEAR_SLOTS') {
+      this.pendingTeam1 = null;
+      this.pendingTeam2 = null;
+      this.syncTeamsFromStore(false);
+      this.renderTournamentView();
+    }
   }
 
   confirmMatchup() {
@@ -193,6 +259,7 @@ class TournamentBoxView {
     if (!currentUser?.isAuthenticated) return;
     this.pendingTeam1 = null;
     this.pendingTeam2 = null;
+    sync.broadcastBoxEvent({ action: 'CLEAR_SLOTS' });
     this.syncTeamsFromStore(false);
     this.renderTournamentView();
   }

@@ -89,6 +89,8 @@ class SyncBridge {
               this.isLocalServerConnected = true;
               this.handleRemoteStateUpdate(data.payload);
               this.updateSyncStatus(true, 'Local Network Server Active');
+            } else if (data && data.type === 'BOX_EVENT' && data.payload) {
+              this.handleMessage(data);
             }
           } catch (err) {
             console.warn('SSE parse error:', err);
@@ -138,22 +140,21 @@ class SyncBridge {
         this.isCloudConnected = true;
         this.updateSyncStatus(true, `Connected to Cloud Room (${this.roomId})`);
 
-        // Subscribe to tournament topic with QoS 1
-        this.mqttClient.subscribe(this.mqttTopic, { qos: 1 }, (err) => {
-          if (err) console.warn('[Cloud Sync] Subscribe error:', err);
-        });
+        // Subscribe to tournament topics
+        this.mqttClient.subscribe(this.mqttTopic, { qos: 1 });
+        this.mqttClient.subscribe(`${this.mqttTopic}/events`, { qos: 1 });
       });
 
       this.mqttClient.on('message', (topic, message) => {
-        if (topic === this.mqttTopic) {
-          try {
-            const payload = JSON.parse(message.toString());
-            if (payload && payload.state) {
-              this.handleRemoteStateUpdate(payload.state);
-            }
-          } catch (err) {
-            console.warn('[Cloud Sync] Message parse error:', err);
+        try {
+          const payload = JSON.parse(message.toString());
+          if (topic === `${this.mqttTopic}/events` || payload?.type === 'BOX_EVENT') {
+            this.handleMessage(payload);
+          } else if (topic === this.mqttTopic && payload?.state) {
+            this.handleRemoteStateUpdate(payload.state);
           }
+        } catch (err) {
+          console.warn('[Cloud Sync] Message parse error:', err);
         }
       });
 
@@ -254,11 +255,44 @@ class SyncBridge {
     }
   }
 
+  broadcastBoxEvent(payload) {
+    const eventData = {
+      type: 'BOX_EVENT',
+      payload,
+      sender: store.getState().currentUser?.adminName || 'Admin'
+    };
+
+    // 1. Local browser tabs via BroadcastChannel
+    if (this.channel) {
+      this.channel.postMessage(eventData);
+    }
+
+    // 2. Local Server SSE/REST (Wi-Fi and mobile phones)
+    fetch('/api/box-event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).catch(() => {});
+
+    // 3. Global Cloud MQTT (Vercel internet viewers)
+    if (this.mqttClient && this.mqttClient.connected) {
+      try {
+        this.mqttClient.publish(`${this.mqttTopic}/events`, JSON.stringify(eventData), { qos: 1 });
+      } catch (err) {
+        console.warn('[Cloud Sync] Box event publish notice:', err);
+      }
+    }
+  }
+
   handleMessage(data) {
     if (!data || !data.type) return;
 
     if (data.type === 'STATE_SYNC' && data.payload && !this.isApplyingRemoteState) {
       this.handleRemoteStateUpdate(data.payload);
+    } else if (data.type === 'BOX_EVENT' && data.payload) {
+      if (window.tournamentBox) {
+        window.tournamentBox.handleRemoteBoxEvent(data.payload);
+      }
     }
   }
 
