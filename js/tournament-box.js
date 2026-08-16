@@ -155,9 +155,11 @@ class TournamentBoxView {
         slot: targetSlot
       });
 
-      // Fanfare & Confetti
-      soundFX.play('hammer');
-      viewerView.triggerConfetti();
+      // Fanfare & Confetti only if user is actively on tournament tab
+      if (window.app?.activeTab === 'tournament-view') {
+        soundFX.play('hammer');
+        viewerView.triggerConfetti();
+      }
       this.renderTournamentView();
 
       // Slot into Crew 1 or Crew 2 after reveal animation
@@ -166,12 +168,16 @@ class TournamentBoxView {
           // Slot into Place 1
           this.pendingTeam1 = drawnTeam;
           this.activeBoxTeams = this.activeBoxTeams.filter((t) => t.id !== drawnTeam.id);
-          if (window.app) window.app.showToast(`📦 Crew 1 Drawn: ${drawnTeam.name}! Click box again to draw Crew 2!`, 'success');
+          if (window.app && window.app.activeTab === 'tournament-view') {
+            window.app.showToast(`📦 Crew 1 Drawn: ${drawnTeam.name}! Click box again to draw Crew 2!`, 'success');
+          }
         } else if (!this.pendingTeam2 && drawnTeam.id !== this.pendingTeam1.id) {
           // Slot into Place 2 & Lock Matchup
           this.pendingTeam2 = drawnTeam;
           this.activeBoxTeams = this.activeBoxTeams.filter((t) => t.id !== drawnTeam.id);
-          if (window.app) window.app.showToast(`📦 Crew 2 Drawn: ${drawnTeam.name}! Matchup formed!`, 'sold');
+          if (window.app && window.app.activeTab === 'tournament-view') {
+            window.app.showToast(`📦 Crew 2 Drawn: ${drawnTeam.name}! Matchup formed!`, 'sold');
+          }
 
           // Auto-save & broadcast matchup
           setTimeout(() => {
@@ -208,17 +214,23 @@ class TournamentBoxView {
     // If this client is currently the active drawing admin, ignore echoing own event
     if (isAdmin && this.isDrawing) return;
 
+    const isCurrentTab = (window.app?.activeTab === 'tournament-view');
+
     if (payload.action === 'START_SHAKE') {
       this.isDrawing = true;
       this.boxState = 'shaking';
       this.emergingTeam = null;
-      soundFX.play('bid');
+      if (isCurrentTab) {
+        soundFX.play('bid');
+      }
       this.renderTournamentView();
     } else if (payload.action === 'REVEAL_TEAM') {
       this.boxState = 'open';
       this.emergingTeam = payload.drawnTeam;
-      soundFX.play('hammer');
-      viewerView.triggerConfetti();
+      if (isCurrentTab) {
+        soundFX.play('hammer');
+        viewerView.triggerConfetti();
+      }
       this.renderTournamentView();
     } else if (payload.action === 'SLOT_IN') {
       const { drawnTeam, slot } = payload;
