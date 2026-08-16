@@ -121,6 +121,8 @@ class StateStore {
         accessCodes: this.state.accessCodes,
         activeAuction: this.state.activeAuction,
         auctionHistory: this.state.auctionHistory,
+        tournamentRounds: this.state.tournamentRounds || INITIAL_STATE.tournamentRounds,
+        activeTournamentRoundId: this.state.activeTournamentRoundId || 'round_qualifiers',
         tournamentMatchups: this.state.tournamentMatchups || [],
         currentUser: this.state.currentUser
       };
@@ -166,6 +168,8 @@ class StateStore {
       accessCodes: Array.isArray(newState.accessCodes) ? newState.accessCodes : (this.state.accessCodes || DEFAULT_ACCESS_CODES),
       activeAuction: newState.activeAuction || this.state.activeAuction,
       auctionHistory: Array.isArray(newState.auctionHistory) ? newState.auctionHistory : this.state.auctionHistory,
+      tournamentRounds: Array.isArray(newState.tournamentRounds) && newState.tournamentRounds.length > 0 ? newState.tournamentRounds : (this.state.tournamentRounds || INITIAL_STATE.tournamentRounds),
+      activeTournamentRoundId: newState.activeTournamentRoundId || this.state.activeTournamentRoundId,
       tournamentMatchups: Array.isArray(newState.tournamentMatchups) ? newState.tournamentMatchups : (this.state.tournamentMatchups || []),
       currentUser: currentSession
     };
@@ -180,6 +184,8 @@ class StateStore {
           accessCodes: this.state.accessCodes,
           activeAuction: this.state.activeAuction,
           auctionHistory: this.state.auctionHistory,
+          tournamentRounds: this.state.tournamentRounds,
+          activeTournamentRoundId: this.state.activeTournamentRoundId,
           tournamentMatchups: this.state.tournamentMatchups,
           currentUser: currentSession
         };

@@ -181,6 +181,8 @@ class SyncBridge {
       racersCount: remoteData.racers?.length,
       teamsCount: remoteData.teams?.length,
       historyCount: remoteData.auctionHistory?.length,
+      roundsCount: remoteData.tournamentRounds?.length,
+      activeRound: remoteData.activeTournamentRoundId,
       matchupsCount: remoteData.tournamentMatchups?.length,
       timestamp: remoteData.updatedAt
     });
@@ -204,6 +206,8 @@ class SyncBridge {
       racersCount: fullState.racers?.length,
       teamsCount: fullState.teams?.length,
       historyCount: fullState.auctionHistory?.length,
+      roundsCount: fullState.tournamentRounds?.length,
+      activeRound: fullState.activeTournamentRoundId,
       matchupsCount: fullState.tournamentMatchups?.length,
       timestamp: Date.now()
     });
@@ -216,6 +220,8 @@ class SyncBridge {
       accessCodes: fullState.accessCodes,
       activeAuction: fullState.activeAuction,
       auctionHistory: fullState.auctionHistory,
+      tournamentRounds: fullState.tournamentRounds || [],
+      activeTournamentRoundId: fullState.activeTournamentRoundId || 'round_qualifiers',
       tournamentMatchups: fullState.tournamentMatchups || [],
       updatedAt: Date.now(),
       updatedBy: fullState.currentUser?.adminName || 'Admin'
