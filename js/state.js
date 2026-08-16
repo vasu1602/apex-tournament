@@ -149,19 +149,39 @@ class StateStore {
     });
   }
 
-  // Receive state from other tabs
+  // Receive state from other tabs & cloud sync
   applyExternalState(newState) {
     const currentSession = this.state.currentUser;
     this.state = {
       ...this.state,
       tournamentName: newState.tournamentName || this.state.tournamentName,
-      teams: newState.teams || this.state.teams,
-      racers: newState.racers || this.state.racers,
-      accessCodes: newState.accessCodes || this.state.accessCodes || DEFAULT_ACCESS_CODES,
+      teams: Array.isArray(newState.teams) ? newState.teams : this.state.teams,
+      racers: Array.isArray(newState.racers) ? newState.racers : this.state.racers,
+      accessCodes: Array.isArray(newState.accessCodes) ? newState.accessCodes : (this.state.accessCodes || DEFAULT_ACCESS_CODES),
       activeAuction: newState.activeAuction || this.state.activeAuction,
-      auctionHistory: newState.auctionHistory || this.state.auctionHistory,
+      auctionHistory: Array.isArray(newState.auctionHistory) ? newState.auctionHistory : this.state.auctionHistory,
       currentUser: currentSession
     };
+
+    // Persist to local storage so future page reloads retain this latest state
+    try {
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        const stateToPersist = {
+          tournamentName: this.state.tournamentName,
+          teams: this.state.teams,
+          racers: this.state.racers,
+          accessCodes: this.state.accessCodes,
+          activeAuction: this.state.activeAuction,
+          auctionHistory: this.state.auctionHistory,
+          currentUser: currentSession
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToPersist));
+      }
+    } catch (e) {
+      console.warn('Could not persist sync state to localStorage:', e);
+    }
+
+    this.recalculateTeamBudgets();
     this.notify({ source: 'sync' });
   }
 

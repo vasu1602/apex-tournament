@@ -67,18 +67,16 @@ class SyncBridge {
 
   // --- LOCAL SERVER SYNC (For Wi-Fi, LAN, PC + Mobile on same server) ---
   initLocalServerSync() {
-    // Check initial state from local server if available
-    fetch('/api/state')
-      .then(res => res.json())
-      .then(data => {
-        if (data && data.success && data.state) {
-          console.log('[Sync] Received initial state from local server');
-          this.handleRemoteStateUpdate(data.state);
-        }
-      })
-      .catch(() => {
-        // Static server without /api/state is normal on static hosts
-      });
+    this.pollLocalState();
+
+    // Re-check on tab focus / visibility change
+    window.addEventListener('focus', () => this.pollLocalState());
+    window.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') this.pollLocalState();
+    });
+
+    // Regular interval poll fallback
+    setInterval(() => this.pollLocalState(), 1500);
 
     // Listen for live Server-Sent Events from local server
     if (typeof EventSource !== 'undefined') {
@@ -103,6 +101,17 @@ class SyncBridge {
         console.warn('EventSource notice:', err);
       }
     }
+  }
+
+  pollLocalState() {
+    fetch('/api/state')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.success && data.state) {
+          this.handleRemoteStateUpdate(data.state);
+        }
+      })
+      .catch(() => {});
   }
 
   // --- GLOBAL CLOUD WEBSOCKET SYNC (MQTT Broker for Vercel) ---
