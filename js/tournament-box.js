@@ -520,8 +520,8 @@ class TournamentBoxView {
             <div class="face-off-versus-slots">
               <!-- Slot 1: Team 1 (First Box Opening) -->
               <div class="face-off-slot ${this.pendingTeam1 ? 'filled' : 'empty'}" style="${this.pendingTeam1 ? `border-color:${this.pendingTeam1.color};` : ''}">
-                <span class="slot-badge-label">CREW 1</span>
                 ${this.pendingTeam1 ? `
+                  <span class="slot-badge-label">CREW 1</span>
                   <div class="slot-team-content">
                     <div class="slot-team-avatar" style="border-color:${this.pendingTeam1.color};">
                       ${this.pendingTeam1.logoUrl ? `<img src="${this.pendingTeam1.logoUrl}" style="width:100%; height:100%; object-fit:cover;">` : (this.pendingTeam1.avatar ? `<img src="${this.pendingTeam1.avatar}" style="width:100%; height:100%; object-fit:cover;">` : '🏎️')}
@@ -529,10 +529,7 @@ class TournamentBoxView {
                     <div class="slot-team-name" style="color:${this.pendingTeam1.color};">${this.pendingTeam1.name}</div>
                   </div>
                 ` : `
-                  <div class="slot-placeholder">
-                    <span style="font-size:1.6rem; opacity:0.6;">📦</span>
-                    <span>${isAdmin ? '1st Box Open → Fits Here' : 'Waiting for Crew 1 Draw'}</span>
-                  </div>
+                  <div class="face-off-slot-title">CREW 1</div>
                 `}
               </div>
 
@@ -541,8 +538,8 @@ class TournamentBoxView {
 
               <!-- Slot 2: Team 2 (Second Box Opening) -->
               <div class="face-off-slot ${this.pendingTeam2 ? 'filled' : 'empty'}" style="${this.pendingTeam2 ? `border-color:${this.pendingTeam2.color};` : ''}">
-                <span class="slot-badge-label">CREW 2</span>
                 ${this.pendingTeam2 ? `
+                  <span class="slot-badge-label">CREW 2</span>
                   <div class="slot-team-content">
                     <div class="slot-team-avatar" style="border-color:${this.pendingTeam2.color};">
                       ${this.pendingTeam2.logoUrl ? `<img src="${this.pendingTeam2.logoUrl}" style="width:100%; height:100%; object-fit:cover;">` : (this.pendingTeam2.avatar ? `<img src="${this.pendingTeam2.avatar}" style="width:100%; height:100%; object-fit:cover;">` : '⚡')}
@@ -550,10 +547,7 @@ class TournamentBoxView {
                     <div class="slot-team-name" style="color:${this.pendingTeam2.color};">${this.pendingTeam2.name}</div>
                   </div>
                 ` : `
-                  <div class="slot-placeholder">
-                    <span style="font-size:1.6rem; opacity:0.6;">📦</span>
-                    <span>${isAdmin ? '2nd Box Open → Fits Here' : 'Waiting for Crew 2 Draw'}</span>
-                  </div>
+                  <div class="face-off-slot-title">CREW 2</div>
                 `}
               </div>
             </div>
