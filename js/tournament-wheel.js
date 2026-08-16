@@ -3,12 +3,12 @@ import { soundFX } from './audio.js';
 import { viewerView } from './viewer-view.js';
 
 const SAMPLE_WHEEL_TEAMS = [
-  { id: 'sample_redline', name: 'Redline Racing', color: '#ff1744' },
-  { id: 'sample_phantom', name: 'Phantom GT', color: '#00e5ff' },
-  { id: 'sample_apex', name: 'Apex Velocity', color: '#ffd700' },
-  { id: 'sample_vortex', name: 'Vortex Motorsports', color: '#00e676' },
-  { id: 'sample_neon', name: 'Neon Syndicate', color: '#d500f9' },
-  { id: 'sample_cyber', name: 'Cyber Drift', color: '#ff6d00' }
+  { id: 'sample_empire', name: 'Empire Imports', color: '#ff1744' },
+  { id: 'sample_autoexotic', name: 'Auto Exotic', color: '#0055ff' },
+  { id: 'sample_soochi', name: 'Soochi', color: '#ba68c8' },
+  { id: 'sample_amore', name: 'Amore', color: '#ad1457' },
+  { id: 'sample_luxary', name: 'Luxary Autos', color: '#9e9d24' },
+  { id: 'sample_beenys', name: 'Beenys', color: '#8e24aa' }
 ];
 
 class TournamentWheelView {
@@ -27,15 +27,15 @@ class TournamentWheelView {
 
     this.sliceColors = [
       { bg: '#ff1744', text: '#ffffff' }, // Crimson
-      { bg: '#00e5ff', text: '#060a12' }, // Cyan
+      { bg: '#0055ff', text: '#ffffff' }, // Royal Blue
+      { bg: '#ba68c8', text: '#ffffff' }, // Lavender/Pink
+      { bg: '#ad1457', text: '#ffffff' }, // Deep Rose
+      { bg: '#9e9d24', text: '#ffffff' }, // Olive/Lime Gold
+      { bg: '#8e24aa', text: '#ffffff' }, // Deep Purple
+      { bg: '#00e5ff', text: '#060a12' }, // Neon Cyan
       { bg: '#ffd700', text: '#060a12' }, // Gold
-      { bg: '#00e676', text: '#060a12' }, // Green
-      { bg: '#d500f9', text: '#ffffff' }, // Purple
-      { bg: '#ff6d00', text: '#060a12' }, // Orange
-      { bg: '#2979ff', text: '#ffffff' }, // Blue
-      { bg: '#ff4081', text: '#ffffff' }, // Pink
-      { bg: '#00b0ff', text: '#060a12' }, // Sky
-      { bg: '#76ff03', text: '#060a12' }  // Lime
+      { bg: '#00e676', text: '#060a12' }, // Neon Green
+      { bg: '#ff6d00', text: '#060a12' }  // Orange
     ];
   }
 
@@ -106,37 +106,68 @@ class TournamentWheelView {
     return false;
   }
 
-  toggleTeamInWheel(teamId) {
-    if (this.isSpinning) return;
-    const { tournamentMatchups = [] } = store.getState();
-    const confirmedTeamIds = new Set();
-    tournamentMatchups.forEach((m) => {
-      if (m.team1?.id) confirmedTeamIds.add(m.team1.id);
-      if (m.team2?.id) confirmedTeamIds.add(m.team2.id);
-    });
+  // --- ADD / REMOVE TEAM METHODS ---
+  submitQuickAdd() {
+    const input = document.getElementById('quick-wheel-team-name');
+    if (!input) return;
+    const name = input.value.trim();
+    if (!name) return;
 
-    if (confirmedTeamIds.has(teamId)) {
-      if (window.app) window.app.showToast('This crew is already locked into an official matchup.', 'info');
+    this.addCustomTeam(name);
+    input.value = '';
+    input.focus();
+  }
+
+  addCustomTeam(name) {
+    if (!name || !name.trim()) return;
+    const cleanName = name.trim();
+
+    // Check if team already exists on wheel
+    if (this.activeWheelTeams.some((t) => t.name.toLowerCase() === cleanName.toLowerCase())) {
+      if (window.app) window.app.showToast(`Team "${cleanName}" is already on the wheel!`, 'warning');
       return;
     }
 
-    const allTeams = this.getAllAvailableTeams();
-    const targetTeam = allTeams.find((t) => t.id === teamId);
-    if (!targetTeam) return;
+    const colorIdx = this.activeWheelTeams.length % this.sliceColors.length;
+    const teamColor = this.sliceColors[colorIdx].bg;
+    const newTeamId = 'team_' + Date.now() + '_' + Math.random().toString(36).substr(2, 3);
 
-    const exists = this.activeWheelTeams.some((wt) => wt.id === teamId);
-    if (exists) {
-      this.activeWheelTeams = this.activeWheelTeams.filter((wt) => wt.id !== teamId);
-      if (window.app) window.app.showToast(`Removed ${targetTeam.name} from wheel`, 'info');
-    } else {
-      this.activeWheelTeams.push({
-        id: targetTeam.id,
-        name: targetTeam.name,
-        color: targetTeam.color || this.sliceColors[this.activeWheelTeams.length % this.sliceColors.length].bg,
-        logoUrl: targetTeam.logoUrl || null,
-        avatar: targetTeam.avatar || null
+    const newTeamObj = {
+      id: newTeamId,
+      name: cleanName,
+      color: teamColor,
+      logoUrl: null,
+      avatar: null
+    };
+
+    // Add to active wheel teams
+    this.activeWheelTeams.push(newTeamObj);
+
+    // Also register in store if not present so it syncs
+    const state = store.getState();
+    if (!state.teams.some((t) => t.name.toLowerCase() === cleanName.toLowerCase())) {
+      store.addTeam({
+        name: cleanName,
+        color: teamColor,
+        budget: 200000
       });
-      if (window.app) window.app.showToast(`Added ${targetTeam.name} to wheel`, 'success');
+    }
+
+    if (window.app) window.app.showToast(`Added "${cleanName}" to Wheel!`, 'success');
+    this.renderTournamentView();
+    setTimeout(() => {
+      this.setupCanvas();
+      this.drawWheel();
+    }, 20);
+  }
+
+  removeTeamFromWheel(teamId) {
+    if (this.isSpinning) return;
+    const target = this.activeWheelTeams.find((t) => t.id === teamId);
+    this.activeWheelTeams = this.activeWheelTeams.filter((t) => t.id !== teamId);
+    
+    if (target && window.app) {
+      window.app.showToast(`Removed "${target.name}" from wheel`, 'info');
     }
 
     this.renderTournamentView();
@@ -144,6 +175,40 @@ class TournamentWheelView {
       this.setupCanvas();
       this.drawWheel();
     }, 20);
+  }
+
+  addTeamToWheel(teamId) {
+    if (this.isSpinning) return;
+    const allTeams = this.getAllAvailableTeams();
+    const target = allTeams.find((t) => t.id === teamId);
+    if (!target) return;
+
+    if (!this.activeWheelTeams.some((t) => t.id === teamId)) {
+      this.activeWheelTeams.push({
+        id: target.id,
+        name: target.name,
+        color: target.color || this.sliceColors[this.activeWheelTeams.length % this.sliceColors.length].bg,
+        logoUrl: target.logoUrl || null,
+        avatar: target.avatar || null
+      });
+      if (window.app) window.app.showToast(`Added "${target.name}" to wheel`, 'success');
+    }
+
+    this.renderTournamentView();
+    setTimeout(() => {
+      this.setupCanvas();
+      this.drawWheel();
+    }, 20);
+  }
+
+  toggleTeamInWheel(teamId) {
+    if (this.isSpinning) return;
+    const exists = this.activeWheelTeams.some((t) => t.id === teamId);
+    if (exists) {
+      this.removeTeamFromWheel(teamId);
+    } else {
+      this.addTeamToWheel(teamId);
+    }
   }
 
   selectAllTeamsForWheel() {
@@ -225,7 +290,7 @@ class TournamentWheelView {
           <h2 class="section-title">Tournament Matchup Wheel</h2>
         </div>
         <p style="color:var(--text-secondary); font-size:0.85rem;">
-          ${isAdmin ? 'Choose which teams go onto the wheel, then spin to draw and lock in official championship match fixtures.' : 'Live championship matchup board and tournament draw arena.'}
+          Add or remove teams directly on the wheel, then spin to draw and lock in official championship match fixtures.
         </p>
       </div>
 
@@ -242,7 +307,7 @@ class TournamentWheelView {
               </h3>
             </div>
             <div class="wheel-counter-pill">
-              ${this.activeWheelTeams.length} of ${allTeams.length} Teams on Wheel
+              ${this.activeWheelTeams.length} Teams on Wheel
             </div>
           </div>
 
@@ -258,70 +323,91 @@ class TournamentWheelView {
 
           <!-- Wheel Controls -->
           <div class="wheel-actions-panel">
-            ${isAdmin ? `
-              <button id="btn-spin-wheel" class="btn btn-gold btn-lg spin-wheel-cta ${this.isSpinning ? 'spinning' : ''}" onclick="window.tournamentWheel.spinWheel()" ${this.activeWheelTeams.length < 1 || this.isSpinning ? 'disabled' : ''}>
-                ${this.isSpinning ? '🌀 SPINNING...' : (this.activeWheelTeams.length === 0 ? '🏁 ALL TEAMS PAIRED' : '🎯 SPIN THE WHEEL')}
-              </button>
-            ` : `
-              <div style="background:rgba(10,14,24,0.8); border:1px solid var(--border-cyan); padding:0.85rem; border-radius:var(--radius-md); text-align:center;">
-                <span style="font-family:var(--font-display); font-size:0.95rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; letter-spacing:1px;">
-                  📡 Live Spectator Broadcast Active
-                </span>
-              </div>
-            `}
+            <button id="btn-spin-wheel" class="btn btn-gold btn-lg spin-wheel-cta ${this.isSpinning ? 'spinning' : ''}" onclick="window.tournamentWheel.spinWheel()" ${this.activeWheelTeams.length < 1 || this.isSpinning ? 'disabled' : ''}>
+              ${this.isSpinning ? '🌀 SPINNING...' : (this.activeWheelTeams.length === 0 ? '🏁 NO TEAMS ON WHEEL' : '🎯 SPIN THE WHEEL')}
+            </button>
 
             <div class="wheel-options-row">
               <label class="wheel-toggle-label" title="When enabled, selected teams are automatically removed from the wheel once their matchup is finalized">
                 <input type="checkbox" id="wheel-auto-remove" ${this.autoRemoveDrawn ? 'checked' : ''} onchange="window.tournamentWheel.toggleAutoRemove(this.checked)">
-                <span>Remove Teams Once Paired</span>
+                <span>Remove Team Once Drawn</span>
               </label>
 
-              ${isAdmin ? `
-                <div style="display:flex; gap:0.5rem;">
-                  <button class="btn btn-outline btn-sm" onclick="window.tournamentWheel.shuffleWheel()" title="Shuffle team slice order on the wheel" ${this.isSpinning || this.activeWheelTeams.length < 2 ? 'disabled' : ''}>
-                    🔀 Shuffle
-                  </button>
-                  <button class="btn btn-outline btn-sm" onclick="window.tournamentWheel.resetWheelPool()" title="Restore un-matched teams to the wheel" ${this.isSpinning ? 'disabled' : ''}>
-                    🔄 Reload
-                  </button>
-                </div>
-              ` : ''}
+              <div style="display:flex; gap:0.5rem;">
+                <button class="btn btn-outline btn-sm" onclick="window.tournamentWheel.shuffleWheel()" title="Shuffle team slice order on the wheel" ${this.isSpinning || this.activeWheelTeams.length < 2 ? 'disabled' : ''}>
+                  🔀 SHUFFLE
+                </button>
+                <button class="btn btn-outline btn-sm" onclick="window.tournamentWheel.resetWheelPool()" title="Restore all teams back to the wheel" ${this.isSpinning ? 'disabled' : ''}>
+                  🔄 RESET POOL
+                </button>
+              </div>
             </div>
           </div>
 
-          <!-- ADMIN ONLY: Team Selection & Filter Card for Wheel -->
-          ${isAdmin ? `
-            <div class="wheel-team-selector-card">
-              <div class="team-selector-header">
-                <div>
-                  <span class="section-tag" style="font-size:0.68rem; color:var(--accent-cyan);">WHEEL ROSTER SELECTION</span>
-                  <div style="font-family:var(--font-display); font-size:0.95rem; font-weight:800; color:#fff;">
-                    Choose Teams on Wheel (${this.activeWheelTeams.length}/${allTeams.length})
-                  </div>
-                </div>
-                <div style="display:flex; gap:0.4rem;">
-                  <button class="btn btn-outline btn-sm" style="font-size:0.7rem; padding:0.25rem 0.55rem;" onclick="window.tournamentWheel.selectAllTeamsForWheel()">Select All</button>
-                  <button class="btn btn-outline btn-sm" style="font-size:0.7rem; padding:0.25rem 0.55rem;" onclick="window.tournamentWheel.deselectAllTeamsForWheel()">Clear</button>
-                  <button class="btn btn-cyan btn-sm" style="font-size:0.7rem; padding:0.25rem 0.55rem;" onclick="window.app.quickAddTeam()">+ Add Team</button>
+          <!-- DIRECT WHEEL TEAM MANAGER: ADD & REMOVE TEAMS -->
+          <div class="wheel-team-selector-card" style="margin-top: 0.5rem;">
+            <div class="team-selector-header">
+              <div>
+                <span class="section-tag" style="font-size:0.68rem; color:var(--accent-gold);">WHEEL MANAGER</span>
+                <div style="font-family:var(--font-display); font-size:0.98rem; font-weight:800; color:#fff; text-transform:uppercase; letter-spacing:0.5px;">
+                  Add / Remove Teams on Wheel (${this.activeWheelTeams.length})
                 </div>
               </div>
-
-              <div class="team-selector-grid">
-                ${allTeams.map((t) => {
-                  const isSelected = this.activeWheelTeams.some((wt) => wt.id === t.id);
-                  const isPaired = confirmedTeamIds.has(t.id);
-                  return `
-                    <div class="team-select-item ${isSelected ? 'selected' : ''} ${isPaired ? 'paired' : ''}" onclick="window.tournamentWheel.toggleTeamInWheel('${t.id}')" title="${isPaired ? 'Already confirmed in a matchup' : 'Click to include/exclude from wheel'}">
-                      <input type="checkbox" ${isSelected ? 'checked' : ''} ${isPaired ? 'disabled' : ''} onclick="event.stopPropagation(); window.tournamentWheel.toggleTeamInWheel('${t.id}')">
-                      <div class="team-select-color-dot" style="background:${t.color || '#00e5ff'};"></div>
-                      <span class="team-select-item-name" style="color:${t.color || '#fff'};">${t.name}</span>
-                      ${isPaired ? '<span style="font-size:0.65rem; color:var(--accent-gold); font-weight:800;">PAIRED</span>' : ''}
-                    </div>
-                  `;
-                }).join('')}
+              <div style="display:flex; gap:0.4rem;">
+                <button class="btn btn-outline btn-sm" style="font-size:0.7rem; padding:0.25rem 0.55rem;" onclick="window.tournamentWheel.selectAllTeamsForWheel()" title="Add all teams to wheel">Select All</button>
+                <button class="btn btn-outline btn-sm" style="font-size:0.7rem; padding:0.25rem 0.55rem;" onclick="window.tournamentWheel.deselectAllTeamsForWheel()" title="Remove all teams from wheel">Clear</button>
               </div>
             </div>
-          ` : ''}
+
+            <!-- Quick Add Input Row -->
+            <div class="wheel-quick-add-row">
+              <input type="text" id="quick-wheel-team-name" class="wheel-quick-input" placeholder="Type team name to add (e.g. Ferrari)..." onkeydown="if(event.key==='Enter') window.tournamentWheel.submitQuickAdd()">
+              <button class="btn btn-cyan btn-sm" style="white-space:nowrap; padding:0.45rem 0.85rem; font-weight:800;" onclick="window.tournamentWheel.submitQuickAdd()">
+                + Add to Wheel
+              </button>
+            </div>
+
+            <!-- Teams on Wheel (Active List with Remove Buttons) -->
+            <div>
+              <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.4rem; font-weight:700;">
+                ACTIVE ON WHEEL (Click ✕ to remove):
+              </div>
+              <div class="wheel-team-pill-list">
+                ${this.activeWheelTeams.length === 0 ? `
+                  <div style="font-size:0.8rem; color:var(--text-muted); padding:0.5rem 0;">No teams on wheel. Type a name above or click from available list below.</div>
+                ` : this.activeWheelTeams.map((t) => `
+                  <div class="wheel-team-badge active-on-wheel" style="border-left: 3px solid ${t.color};">
+                    <span style="color:${t.color}; font-weight:800;">${t.name}</span>
+                    <button class="badge-remove-btn" onclick="window.tournamentWheel.removeTeamFromWheel('${t.id}')" title="Remove ${t.name} from wheel">
+                      ✕
+                    </button>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Available / Excluded Teams (Click to Add to Wheel) -->
+            ${(() => {
+              const inactiveTeams = allTeams.filter((t) => !this.activeWheelTeams.some((wt) => wt.id === t.id) && !confirmedTeamIds.has(t.id));
+              if (inactiveTeams.length === 0) return '';
+              return `
+                <div style="border-top:1px dashed var(--border-subtle); padding-top:0.6rem; margin-top:0.2rem;">
+                  <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.4rem; font-weight:700;">
+                    AVAILABLE TEAMS (Click + to add onto wheel):
+                  </div>
+                  <div class="wheel-team-pill-list">
+                    ${inactiveTeams.map((t) => `
+                      <div class="wheel-team-badge" style="border-left: 3px solid ${t.color}; cursor:pointer; opacity:0.85;" onclick="window.tournamentWheel.addTeamToWheel('${t.id}')" title="Click to add ${t.name} to wheel">
+                        <span style="color:${t.color}; font-weight:800;">${t.name}</span>
+                        <span style="color:var(--accent-cyan); font-weight:900; margin-left:0.2rem;">+</span>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              `;
+            })()}
+
+          </div>
 
         </div>
 
@@ -352,7 +438,7 @@ class TournamentWheelView {
                 ` : `
                   <div class="slot-placeholder">
                     <span class="slot-placeholder-icon">🎯</span>
-                    <span>${isAdmin ? 'Spin to Draw Crew 1' : 'Awaiting Crew 1 Draw'}</span>
+                    <span>Spin to Draw Crew 1</span>
                   </div>
                 `}
               </div>
@@ -373,7 +459,7 @@ class TournamentWheelView {
                 ` : `
                   <div class="slot-placeholder">
                     <span class="slot-placeholder-icon">🎯</span>
-                    <span>${isAdmin ? 'Spin to Draw Crew 2' : 'Awaiting Crew 2 Draw'}</span>
+                    <span>Spin to Draw Crew 2</span>
                   </div>
                 `}
               </div>
@@ -382,15 +468,15 @@ class TournamentWheelView {
             <!-- Matchup Action Buttons -->
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:1rem; gap:0.5rem; flex-wrap:wrap;">
               <div style="font-size:0.78rem; color:var(--text-muted);">
-                ${this.pendingTeam1 && !this.pendingTeam2 ? '👉 Spin wheel again to draw opposing team' : (this.pendingTeam1 && this.pendingTeam2 ? '✅ Matchup finalized & broadcasted to all viewers!' : (isAdmin ? 'Click Spin to draw teams' : 'Race Control is drawing matchups'))}
+                ${this.pendingTeam1 && !this.pendingTeam2 ? '👉 Spin wheel again to draw opposing team' : (this.pendingTeam1 && this.pendingTeam2 ? '✅ Matchup finalized & broadcasted to all viewers!' : 'Click Spin to start drawing teams')}
               </div>
               <div style="display:flex; gap:0.5rem;">
-                ${(this.pendingTeam1 || this.pendingTeam2) && isAdmin ? `
+                ${this.pendingTeam1 || this.pendingTeam2 ? `
                   <button class="btn btn-outline btn-sm" onclick="window.tournamentWheel.clearPendingMatchup()">
                     Clear Selection
                   </button>
                 ` : ''}
-                ${this.pendingTeam1 && this.pendingTeam2 && isAdmin ? `
+                ${this.pendingTeam1 && this.pendingTeam2 ? `
                   <button class="btn btn-cyan btn-sm" onclick="window.tournamentWheel.confirmPendingMatchup()">
                     ⚡ Lock Matchup
                   </button>
@@ -408,7 +494,7 @@ class TournamentWheelView {
                   Championship Matchups (${tournamentMatchups.length})
                 </h3>
               </div>
-              ${tournamentMatchups.length > 0 && isAdmin ? `
+              ${tournamentMatchups.length > 0 ? `
                 <button class="btn btn-danger btn-sm" style="font-size:0.7rem; padding:0.3rem 0.6rem;" onclick="window.tournamentWheel.clearAllMatchups()">
                   🗑️ Clear All
                 </button>
@@ -419,7 +505,7 @@ class TournamentWheelView {
               <div style="text-align:center; padding:2rem 1rem; color:var(--text-muted); font-size:0.85rem; border:1px dashed var(--border-subtle); border-radius:var(--radius-md);">
                 <div style="font-size:1.8rem; margin-bottom:0.3rem;">🏁</div>
                 No face-off matchups confirmed yet.<br>
-                ${isAdmin ? 'Spin the wheel on the left to draw teams and create match fixtures.' : 'Official matchups will appear here in real time as Race Control draws the teams.'}
+                Spin the wheel on the left to draw teams and create match fixtures.
               </div>
             ` : `
               <div class="matchups-fixtures-list">
@@ -431,7 +517,7 @@ class TournamentWheelView {
 
                     <div class="fixture-teams-versus">
                       <!-- Team 1 -->
-                      <div class="fixture-team-pill ${m.winnerId === m.team1.id ? 'is-winner' : (m.winnerId && m.winnerId !== m.team1.id ? 'is-eliminated' : '')}" style="border-left: 3px solid ${m.team1.color}; cursor:${isAdmin ? 'pointer' : 'default'};" ${isAdmin ? `onclick="window.tournamentWheel.toggleWinner('${m.id}', '${m.team1.id}')" title="Click to mark as winner"` : ''}>
+                      <div class="fixture-team-pill ${m.winnerId === m.team1.id ? 'is-winner' : (m.winnerId && m.winnerId !== m.team1.id ? 'is-eliminated' : '')}" style="border-left: 3px solid ${m.team1.color}; cursor:pointer;" onclick="window.tournamentWheel.toggleWinner('${m.id}', '${m.team1.id}')" title="Click to mark as winner">
                         <span class="fixture-team-name">${m.team1.name}</span>
                         ${m.winnerId === m.team1.id ? '<span class="winner-crown">👑 WINNER</span>' : ''}
                       </div>
@@ -439,17 +525,15 @@ class TournamentWheelView {
                       <span class="fixture-vs-text">VS</span>
 
                       <!-- Team 2 -->
-                      <div class="fixture-team-pill ${m.winnerId === m.team2.id ? 'is-winner' : (m.winnerId && m.winnerId !== m.team2.id ? 'is-eliminated' : '')}" style="border-left: 3px solid ${m.team2.color}; cursor:${isAdmin ? 'pointer' : 'default'};" ${isAdmin ? `onclick="window.tournamentWheel.toggleWinner('${m.id}', '${m.team2.id}')" title="Click to mark as winner"` : ''}>
+                      <div class="fixture-team-pill ${m.winnerId === m.team2.id ? 'is-winner' : (m.winnerId && m.winnerId !== m.team2.id ? 'is-eliminated' : '')}" style="border-left: 3px solid ${m.team2.color}; cursor:pointer;" onclick="window.tournamentWheel.toggleWinner('${m.id}', '${m.team2.id}')" title="Click to mark as winner">
                         <span class="fixture-team-name">${m.team2.name}</span>
                         ${m.winnerId === m.team2.id ? '<span class="winner-crown">👑 WINNER</span>' : ''}
                       </div>
                     </div>
 
-                    ${isAdmin ? `
-                      <button class="btn-icon fixture-delete-btn" onclick="window.tournamentWheel.deleteMatchup('${m.id}')" title="Remove Matchup">
-                        ✕
-                      </button>
-                    ` : ''}
+                    <button class="btn-icon fixture-delete-btn" onclick="window.tournamentWheel.deleteMatchup('${m.id}')" title="Remove Matchup">
+                      ✕
+                    </button>
                   </div>
                 `).join('')}
               </div>
@@ -544,10 +628,10 @@ class TournamentWheelView {
       ctx.fillStyle = '#ffffff';
       ctx.font = '700 15px "Rajdhani", sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('NO TEAMS SELECTED', center, center - 6);
+      ctx.fillText('NO TEAMS ON WHEEL', center, center - 6);
       ctx.fillStyle = '#00e5ff';
       ctx.font = '600 12px "Inter", sans-serif';
-      ctx.fillText('Select teams from roster below', center, center + 15);
+      ctx.fillText('Type a name below or click available teams', center, center + 15);
       ctx.restore();
       return;
     }
@@ -773,8 +857,6 @@ class TournamentWheelView {
   }
 
   toggleWinner(matchupId, teamId) {
-    const { currentUser } = store.getState();
-    if (!currentUser || !currentUser.isAuthenticated) return;
     store.setTournamentMatchupWinner(matchupId, teamId);
     this.renderTournamentView();
   }
