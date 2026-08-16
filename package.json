@@ -1,0 +1,9 @@
+{
+  "name": "racing-auction-hub",
+  "version": "3.6.0",
+  "private": true,
+  "description": "Apex Velocity Real-Time Racing Auction Hub",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
