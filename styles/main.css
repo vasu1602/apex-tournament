@@ -147,16 +147,28 @@ html, body {
   cursor: pointer;
 }
 
-.brand-icon {
-  width: 36px;
-  height: 36px;
-  background: linear-gradient(135deg, var(--accent-red), #990022);
+.brand-logo-box {
+  width: 40px;
+  height: 40px;
   border-radius: var(--radius-sm);
-  display: grid;
-  place-items: center;
-  font-size: 1.25rem;
-  box-shadow: 0 0 15px var(--accent-red-glow);
-  transform: skewX(-8deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(14, 20, 32, 0.85);
+  border: 1px solid rgba(0, 242, 254, 0.35);
+  box-shadow: 0 0 16px rgba(0, 242, 254, 0.25), 0 0 25px rgba(255, 42, 85, 0.15);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.brand-wrapper:hover .brand-logo-box {
+  transform: scale(1.06);
+  box-shadow: 0 0 22px rgba(0, 242, 254, 0.45), 0 0 35px rgba(255, 42, 85, 0.25);
+}
+
+.brand-logo-img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
 }
 
 .brand-text {
