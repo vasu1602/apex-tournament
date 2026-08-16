@@ -846,6 +846,9 @@ class StateStore {
       racers: this.state.racers,
       activeAuction: this.state.activeAuction,
       auctionHistory: this.state.auctionHistory,
+      tournamentRounds: this.state.tournamentRounds || INITIAL_STATE.tournamentRounds,
+      activeTournamentRoundId: this.state.activeTournamentRoundId || 'round_qualifiers',
+      tournamentMatchups: this.state.tournamentMatchups || [],
       exportedAt: new Date().toISOString()
     }, null, 2);
   }
@@ -859,6 +862,9 @@ class StateStore {
         this.state.racers = parsed.racers;
         this.state.activeAuction = parsed.activeAuction || INITIAL_STATE.activeAuction;
         this.state.auctionHistory = parsed.auctionHistory || [];
+        this.state.tournamentRounds = Array.isArray(parsed.tournamentRounds) && parsed.tournamentRounds.length > 0 ? parsed.tournamentRounds : (this.state.tournamentRounds || INITIAL_STATE.tournamentRounds);
+        this.state.activeTournamentRoundId = parsed.activeTournamentRoundId || this.state.activeTournamentRoundId || 'round_qualifiers';
+        this.state.tournamentMatchups = Array.isArray(parsed.tournamentMatchups) ? parsed.tournamentMatchups : [];
         this.saveState();
         return { success: true };
       }
