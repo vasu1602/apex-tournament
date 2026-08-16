@@ -587,6 +587,106 @@ class TournamentBoxView {
       if (m.team2?.id) confirmedTeamIds.add(m.team2.id);
     });
 
+    // --- SPECTATOR / VIEWER DEDICATED CLEAN VIEW (NO BOX, NO DRAW SLOTS) ---
+    if (!isAdmin) {
+      container.innerHTML = `
+        <div class="glass-card matchups-board-card" style="max-width: 980px; margin: 0 auto; padding: 1.5rem;">
+          
+          <!-- Spectator Header with Remaining Teams Counter -->
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1.25rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 1rem;">
+            <div class="section-title-wrap">
+              <span class="section-tag" style="color:var(--accent-cyan);">TOURNAMENT</span>
+              <h2 class="section-title" style="font-size:1.35rem; margin:0;">OFFICIAL RACE MATCH-UPS</h2>
+            </div>
+            
+            <div class="box-team-counter-badge" style="background:rgba(0, 229, 255, 0.08); border:1px solid var(--border-cyan); padding:0.45rem 1rem; border-radius:var(--radius-pill); font-family:var(--font-display); font-size:0.85rem; color:#fff; display:flex; align-items:center; gap:0.5rem; box-shadow:0 0 12px rgba(0,229,255,0.15);">
+              <span style="font-size:1.1rem;">📦</span> 
+              <span>Teams in Box: <strong style="color:var(--accent-cyan); font-size:1rem;">${this.activeBoxTeams.length}</strong> / ${allTeams.length}</span>
+            </div>
+          </div>
+
+          <!-- Tournament Rounds Navigation / Switcher Pills Bar -->
+          <div class="tournament-rounds-pills-bar" style="margin-bottom: 1.25rem;">
+            ${tournamentRounds.map((r) => {
+              const count = tournamentMatchups.filter((m) => (m.roundId || tournamentRounds[0]?.id) === r.id).length;
+              const isSelected = r.id === activeRound.id;
+              return `
+                <button class="round-pill-tab ${isSelected ? 'active' : ''} ${r.isLocked ? 'locked-round' : ''}" 
+                        onclick="window.tournamentBox.selectRound('${r.id}')"
+                        title="${r.name} (${count} matches)">
+                  ${r.isLocked ? '🔒 ' : ''}${r.name} (${count})
+                </button>
+              `;
+            }).join('')}
+          </div>
+
+          <!-- Active Round Section Header -->
+          <div class="section-header" style="margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+            <div class="section-title-wrap" style="align-items:center; gap:0.6rem; flex-wrap:wrap;">
+              <span class="section-tag" style="font-size:0.7rem; color:var(--accent-gold);">OFFICIAL FIXTURES</span>
+              <h3 style="font-family:var(--font-display); font-size:1.15rem; color:#fff; text-transform:uppercase; margin:0;">
+                ${activeRound.name} <span style="color:var(--text-muted); font-size:0.95rem;">(${currentRoundMatchups.length})</span>
+              </h3>
+              ${activeRound.isLocked ? `
+                <span class="round-locked-banner">🔒 LOCKED</span>
+              ` : ''}
+            </div>
+
+            <div style="font-size:0.75rem; color:var(--text-muted);">
+              Tap team name to inspect driver roster
+            </div>
+          </div>
+
+          <!-- Fixtures List for Active Round -->
+          ${currentRoundMatchups.length === 0 ? `
+            <div style="text-align:center; padding:3.5rem 1.5rem; color:var(--text-muted); font-size:0.9rem; border:1px dashed var(--border-subtle); border-radius:var(--radius-md); background:rgba(7, 10, 16, 0.4);">
+              <div style="font-size:2.4rem; margin-bottom:0.5rem;">🏁</div>
+              No face-off matchups created yet for <strong>${activeRound.name}</strong>.<br>
+              <span style="font-size:0.82rem; color:var(--text-muted); margin-top:0.35rem; display:inline-block;">Waiting for Race Control Admin to draw match fixtures.</span>
+            </div>
+          ` : `
+            <div class="matchups-fixtures-list">
+              ${currentRoundMatchups.map((m) => `
+                <div class="matchup-fixture-row ${m.winnerId ? 'has-winner' : ''}">
+                  <div class="fixture-number-badge">
+                    MATCH #${m.matchNumber}
+                  </div>
+
+                  <div class="fixture-teams-versus">
+                    <!-- Team 1 -->
+                    <div class="fixture-team-pill ${m.winnerId === m.team1.id ? 'is-winner' : (m.winnerId && m.winnerId !== m.team1.id ? 'is-eliminated' : '')}" 
+                         style="border-left: 3px solid ${m.team1.color}; cursor:pointer;" 
+                         onclick="window.app.inspectTeamRoster('${m.team1.id}')" 
+                         title="Click to view ${m.team1.name} player roster">
+                      <span class="fixture-team-name">
+                        ${m.team1.name}
+                      </span>
+                      ${m.winnerId === m.team1.id ? '<span class="winner-crown">👑 WINNER</span>' : ''}
+                    </div>
+
+                    <span class="fixture-vs-text">VS</span>
+
+                    <!-- Team 2 -->
+                    <div class="fixture-team-pill ${m.winnerId === m.team2.id ? 'is-winner' : (m.winnerId && m.winnerId !== m.team2.id ? 'is-eliminated' : '')}" 
+                         style="border-left: 3px solid ${m.team2.color}; cursor:pointer;" 
+                         onclick="window.app.inspectTeamRoster('${m.team2.id}')" 
+                         title="Click to view ${m.team2.name} player roster">
+                      <span class="fixture-team-name">
+                        ${m.team2.name}
+                      </span>
+                      ${m.winnerId === m.team2.id ? '<span class="winner-crown">👑 WINNER</span>' : ''}
+                    </div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          `}
+        </div>
+      `;
+      return;
+    }
+
+    // --- ADMIN VIEW (FULL STUDIO WITH MYSTERY BOX & DRAW SLOTS) ---
     container.innerHTML = `
       <!-- Tournament Header -->
       <div class="section-header" style="margin-bottom: 1.25rem;">
