@@ -198,28 +198,24 @@ class SyncBridge {
     const currentState = store.getState();
     const isAdmin = Boolean(currentState.currentUser && currentState.currentUser.isAuthenticated);
 
-    const remoteTime = Number(remoteData.updatedAt) || 0;
-    const localTime = Number(currentState.updatedAt) || 0;
-
-    // 1. If this window is an authenticated Admin, do NOT overwrite with an older or equal state!
-    if (isAdmin && remoteTime <= localTime) {
-      return;
+    // If current tab is Admin, only ignore if incoming state is older
+    if (isAdmin) {
+      const remoteTime = Number(remoteData.updatedAt) || 0;
+      const localTime = Number(currentState.updatedAt) || 0;
+      if (remoteTime <= localTime) {
+        return;
+      }
     }
 
-    // 2. For viewers: only apply newer updates (or initial state if viewer has nothing)
-    if (!isAdmin && remoteTime < localTime && (currentState.racers?.length > 0 || currentState.tournamentMatchups?.length > 0)) {
-      return;
-    }
-
-    // Avoid redundant renders if hash is identical
+    // Hash state including matchups details (so winner updates always trigger re-render)
     const stateHash = JSON.stringify({
       activeAuction: remoteData.activeAuction,
       racersCount: remoteData.racers?.length,
       teamsCount: remoteData.teams?.length,
       historyCount: remoteData.auctionHistory?.length,
-      roundsCount: remoteData.tournamentRounds?.length,
+      rounds: remoteData.tournamentRounds,
       activeRound: remoteData.activeTournamentRoundId,
-      matchupsCount: remoteData.tournamentMatchups?.length,
+      matchups: remoteData.tournamentMatchups,
       timestamp: remoteData.updatedAt
     });
 
@@ -237,18 +233,6 @@ class SyncBridge {
   }
 
   broadcastState(fullState) {
-    const stateHash = JSON.stringify({
-      activeAuction: fullState.activeAuction,
-      racersCount: fullState.racers?.length,
-      teamsCount: fullState.teams?.length,
-      historyCount: fullState.auctionHistory?.length,
-      roundsCount: fullState.tournamentRounds?.length,
-      activeRound: fullState.activeTournamentRoundId,
-      matchupsCount: fullState.tournamentMatchups?.length,
-      timestamp: Date.now()
-    });
-    this.lastSyncedHash = stateHash;
-
     const payloadToSync = {
       tournamentName: fullState.tournamentName,
       teams: fullState.teams,
@@ -262,6 +246,18 @@ class SyncBridge {
       updatedAt: Date.now(),
       updatedBy: fullState.currentUser?.adminName || 'Admin'
     };
+
+    const stateHash = JSON.stringify({
+      activeAuction: payloadToSync.activeAuction,
+      racersCount: payloadToSync.racers?.length,
+      teamsCount: payloadToSync.teams?.length,
+      historyCount: payloadToSync.auctionHistory?.length,
+      rounds: payloadToSync.tournamentRounds,
+      activeRound: payloadToSync.activeTournamentRoundId,
+      matchups: payloadToSync.tournamentMatchups,
+      timestamp: payloadToSync.updatedAt
+    });
+    this.lastSyncedHash = stateHash;
 
     // 1. Broadcast to local browser tabs via BroadcastChannel
     if (this.channel) {
