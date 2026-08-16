@@ -126,3 +126,19 @@
   background-size: 200% 100%;
   animation: goldShine 3s infinite linear;
 }
+
+/* Continuous Clockwise Logo Rotation Animation */
+@keyframes logoRotateClockwise {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.anim-logo-spin {
+  animation: logoRotateClockwise 8s linear infinite;
+  transform-origin: center center;
+  will-change: transform;
+}
