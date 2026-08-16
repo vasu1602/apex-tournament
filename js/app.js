@@ -6,6 +6,7 @@ import { sync } from './sync.js';
 import { viewerView } from './viewer-view.js';
 import { adminView } from './admin-view.js';
 import { imageCropper } from './image-cropper.js';
+import { tournamentBox } from './tournament-box.js';
 
 class AppController {
   constructor() {
@@ -18,6 +19,7 @@ class AppController {
     this.canvasBg = initCanvasBackground('bg-canvas');
     viewerView.init();
     adminView.init();
+    tournamentBox.init();
 
     // 2. Subscribe to state updates
     store.subscribe((state, meta) => {
@@ -136,6 +138,7 @@ class AppController {
     viewerView.renderLiveStage('live-arena-view');
     viewerView.renderTeamsGrid('teams-container');
     viewerView.renderRacersGrid('racers-container');
+    tournamentBox.renderTournamentView('tournament-view');
 
     // Render admin view only if authenticated
     if (isAuth) {
