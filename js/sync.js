@@ -1,24 +1,20 @@
 import { store } from './state.js';
 
-// Default Public / Shared Realtime Relay Configuration
-const DEFAULT_FIREBASE_CONFIG = {
-  databaseURL: "https://apex-racing-auction-default-rtdb.firebaseio.com"
-};
-
 class SyncBridge {
   constructor() {
     this.channelName = 'apex_racing_auction_channel';
     this.channel = null;
-    this.firebaseApp = null;
-    this.firebaseDb = null;
-    this.dbRef = null;
+    this.mqttClient = null;
+    this.eventSource = null;
     this.isCloudConnected = false;
+    this.isLocalServerConnected = false;
     this.isApplyingRemoteState = false;
     this.lastSyncedHash = null;
 
     // Room ID from URL (?room=xxx) or default
     this.roomId = this.getRoomIdFromUrl();
-    
+    this.mqttTopic = `apex_racing_auction/v3/${this.roomId}`;
+
     this.init();
   }
 
@@ -36,7 +32,7 @@ class SyncBridge {
   init() {
     if (typeof window === 'undefined') return;
 
-    // 1. Initialize local BroadcastChannel for same-device multi-tabs
+    // 1. Local BroadcastChannel for same-device multi-tab synchronization
     if ('BroadcastChannel' in window) {
       try {
         this.channel = new BroadcastChannel(this.channelName);
@@ -44,7 +40,7 @@ class SyncBridge {
           this.handleMessage(event.data);
         };
       } catch (err) {
-        console.warn('BroadcastChannel fallback:', err);
+        console.warn('BroadcastChannel notice:', err);
       }
     }
 
@@ -60,81 +56,116 @@ class SyncBridge {
       }
     });
 
-    // 3. Initialize Cloud Realtime Database (Firebase / WebSockets)
-    this.initCloudRealtime();
+    // 3. Connect to Local Server Sync (SSE / HTTP API for Wi-Fi & LAN)
+    this.initLocalServerSync();
+
+    // 4. Connect to Global Cloud MQTT over WebSockets (for Vercel & Internet)
+    this.initCloudMqtt();
 
     window.syncBridge = this;
   }
 
-  getSavedFirebaseConfig() {
-    try {
-      const saved = localStorage.getItem('apex_firebase_config');
-      if (saved) {
-        return JSON.parse(saved);
+  // --- LOCAL SERVER SYNC (For Wi-Fi, LAN, PC + Mobile on same server) ---
+  initLocalServerSync() {
+    // Check initial state from local server if available
+    fetch('/api/state')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.success && data.state) {
+          console.log('[Sync] Received initial state from local server');
+          this.handleRemoteStateUpdate(data.state);
+        }
+      })
+      .catch(() => {
+        // Static server without /api/state is normal on static hosts
+      });
+
+    // Listen for live Server-Sent Events from local server
+    if (typeof EventSource !== 'undefined') {
+      try {
+        this.eventSource = new EventSource('/api/events');
+        this.eventSource.onmessage = (e) => {
+          try {
+            const data = JSON.parse(e.data);
+            if (data && data.type === 'STATE_SYNC' && data.payload) {
+              this.isLocalServerConnected = true;
+              this.handleRemoteStateUpdate(data.payload);
+              this.updateSyncStatus(true, 'Local Network Server Active');
+            }
+          } catch (err) {
+            console.warn('SSE parse error:', err);
+          }
+        };
+        this.eventSource.onerror = () => {
+          this.isLocalServerConnected = false;
+        };
+      } catch (err) {
+        console.warn('EventSource notice:', err);
       }
-    } catch (e) {
-      console.warn('Could not parse custom Firebase config:', e);
-    }
-    return DEFAULT_FIREBASE_CONFIG;
-  }
-
-  saveFirebaseConfig(config) {
-    try {
-      localStorage.setItem('apex_firebase_config', JSON.stringify(config));
-      this.initCloudRealtime();
-      return true;
-    } catch (e) {
-      console.error('Failed to save Firebase config:', e);
-      return false;
     }
   }
 
-  initCloudRealtime() {
-    if (typeof window.firebase === 'undefined') {
-      // Firebase CDN still loading, retry shortly
-      setTimeout(() => this.initCloudRealtime(), 300);
+  // --- GLOBAL CLOUD WEBSOCKET SYNC (MQTT Broker for Vercel) ---
+  initCloudMqtt() {
+    if (typeof window.mqtt === 'undefined') {
+      // Retry loading if CDN script is asynchronous
+      setTimeout(() => this.initCloudMqtt(), 350);
       return;
     }
 
     try {
-      const config = this.getSavedFirebaseConfig();
-      if (!config || !config.databaseURL) {
-        this.updateSyncStatus(false, 'Local Mode Only');
-        return;
-      }
+      // Connect to secure public MQTT WebSocket broker
+      const brokerUrl = 'wss://broker.emqx.io:8084/mqtt';
+      const clientId = 'apex_' + Math.random().toString(16).substr(2, 8);
 
-      // Initialize Firebase App if not already initialized
-      if (!window.firebase.apps.length) {
-        this.firebaseApp = window.firebase.initializeApp(config);
-      } else {
-        this.firebaseApp = window.firebase.apps[0];
-      }
+      this.mqttClient = window.mqtt.connect(brokerUrl, {
+        clientId,
+        clean: true,
+        connectTimeout: 5000,
+        reconnectPeriod: 3000
+      });
 
-      this.firebaseDb = window.firebase.database();
-      this.dbRef = this.firebaseDb.ref(`tournaments/${this.roomId}`);
+      this.mqttClient.on('connect', () => {
+        this.isCloudConnected = true;
+        this.updateSyncStatus(true, `Connected to Cloud Room (${this.roomId})`);
 
-      // Listen for remote real-time updates from Admin
-      this.dbRef.on('value', (snapshot) => {
-        const remoteData = snapshot.val();
-        if (remoteData) {
-          this.handleRemoteStateUpdate(remoteData);
+        // Subscribe to tournament topic with QoS 1
+        this.mqttClient.subscribe(this.mqttTopic, { qos: 1 }, (err) => {
+          if (err) console.warn('[Cloud Sync] Subscribe error:', err);
+        });
+      });
+
+      this.mqttClient.on('message', (topic, message) => {
+        if (topic === this.mqttTopic) {
+          try {
+            const payload = JSON.parse(message.toString());
+            if (payload && payload.state) {
+              this.handleRemoteStateUpdate(payload.state);
+            }
+          } catch (err) {
+            console.warn('[Cloud Sync] Message parse error:', err);
+          }
         }
-        this.updateSyncStatus(true, `Live Cloud Connected (Room: ${this.roomId})`);
-      }, (error) => {
-        console.warn('Firebase RTDB Read Warning (Using local sync):', error.message);
-        this.updateSyncStatus(false, 'Offline (Local Sync Active)');
+      });
+
+      this.mqttClient.on('error', (err) => {
+        console.warn('[Cloud Sync] Connection notice:', err.message);
+        this.isCloudConnected = false;
+      });
+
+      this.mqttClient.on('offline', () => {
+        this.isCloudConnected = false;
       });
 
     } catch (err) {
-      console.warn('Firebase RTDB init notice:', err.message);
-      this.updateSyncStatus(false, 'Local Broadcast Active');
+      console.warn('[Cloud Sync] Init notice:', err);
     }
   }
 
   handleRemoteStateUpdate(remoteData) {
     if (!remoteData || typeof remoteData !== 'object') return;
 
-    // Avoid self-echo loop if hash matches
+    // Avoid self-echo loop
     const stateHash = JSON.stringify({
       activeAuction: remoteData.activeAuction,
       racersCount: remoteData.racers?.length,
@@ -152,7 +183,7 @@ class SyncBridge {
     } finally {
       setTimeout(() => {
         this.isApplyingRemoteState = false;
-      }, 100);
+      }, 80);
     }
   }
 
@@ -166,34 +197,47 @@ class SyncBridge {
     });
     this.lastSyncedHash = stateHash;
 
-    // 1. Broadcast to local tabs
+    const payloadToSync = {
+      tournamentName: fullState.tournamentName,
+      teams: fullState.teams,
+      racers: fullState.racers,
+      accessCodes: fullState.accessCodes,
+      activeAuction: fullState.activeAuction,
+      auctionHistory: fullState.auctionHistory,
+      updatedAt: Date.now(),
+      updatedBy: fullState.currentUser?.adminName || 'Admin'
+    };
+
+    // 1. Broadcast to local browser tabs via BroadcastChannel
     if (this.channel) {
       this.channel.postMessage({
         type: 'STATE_SYNC',
-        payload: fullState,
+        payload: payloadToSync,
         sender: store.getState().currentUser?.adminName || 'Admin'
       });
     }
 
-    // 2. Push to Cloud Realtime Database for all internet viewers (on Vercel & mobile)
-    if (this.dbRef && !this.isApplyingRemoteState) {
-      try {
-        const payloadToSync = {
-          tournamentName: fullState.tournamentName,
-          teams: fullState.teams,
-          racers: fullState.racers,
-          accessCodes: fullState.accessCodes,
-          activeAuction: fullState.activeAuction,
-          auctionHistory: fullState.auctionHistory,
-          updatedAt: Date.now(),
-          updatedBy: fullState.currentUser?.adminName || 'Admin'
-        };
+    // 2. Post to Local Server API (for Wi-Fi & LAN phones)
+    fetch('/api/state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payloadToSync)
+    }).catch(() => {
+      // Ignored if purely static host
+    });
 
-        this.dbRef.set(payloadToSync).catch((err) => {
-          console.warn('Cloud DB write notice:', err.message);
+    // 3. Publish to Global Cloud MQTT WebSockets (for Vercel & Internet Viewers)
+    if (this.mqttClient && this.mqttClient.connected && !this.isApplyingRemoteState) {
+      try {
+        const msg = JSON.stringify({
+          type: 'STATE_SYNC',
+          roomId: this.roomId,
+          state: payloadToSync
         });
+        // retain: true ensures newly connected viewers immediately get the latest tournament state!
+        this.mqttClient.publish(this.mqttTopic, msg, { qos: 1, retain: true });
       } catch (err) {
-        console.warn('Cloud broadcast error:', err);
+        console.warn('[Cloud Sync] Publish notice:', err);
       }
     }
   }
@@ -207,13 +251,12 @@ class SyncBridge {
   }
 
   updateSyncStatus(isConnected, message) {
-    this.isCloudConnected = isConnected;
     const footerDot = document.querySelector('.footer-sync-dot');
     const footerText = document.querySelector('.footer-sync-status span');
     if (footerText) {
       footerText.textContent = isConnected 
-        ? `Live Cloud Telemetry Sync Active • Room: ${this.roomId}`
-        : `Local Telemetry Sync Active • ${message}`;
+        ? `Real-Time Sync Active • Room: ${this.roomId}`
+        : `Local Sync Active • ${message}`;
     }
     if (footerDot) {
       footerDot.style.background = isConnected ? 'var(--accent-green)' : 'var(--accent-cyan)';
