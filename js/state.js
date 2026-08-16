@@ -100,6 +100,9 @@ class StateStore {
             return {
               ...INITIAL_STATE,
               ...parsed,
+              tournamentRounds: Array.isArray(parsed.tournamentRounds) && parsed.tournamentRounds.length > 0 ? parsed.tournamentRounds : INITIAL_STATE.tournamentRounds,
+              activeTournamentRoundId: parsed.activeTournamentRoundId || 'round_qualifiers',
+              tournamentMatchups: Array.isArray(parsed.tournamentMatchups) ? parsed.tournamentMatchups : [],
               accessCodes,
               currentUser: savedSession
             };
@@ -112,7 +115,7 @@ class StateStore {
     return JSON.parse(JSON.stringify(INITIAL_STATE));
   }
 
-  saveState(broadcast = true) {
+  saveState(broadcast = true, isExplicitClear = false) {
     try {
       this.state.updatedAt = Date.now();
       const stateToPersist = {
@@ -126,13 +129,14 @@ class StateStore {
         activeTournamentRoundId: this.state.activeTournamentRoundId || 'round_qualifiers',
         tournamentMatchups: this.state.tournamentMatchups || [],
         currentUser: this.state.currentUser,
-        updatedAt: this.state.updatedAt
+        updatedAt: this.state.updatedAt,
+        isExplicitClear
       };
       if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToPersist));
       }
       if (broadcast && typeof window !== 'undefined' && window.syncBridge) {
-        window.syncBridge.broadcastState(this.state);
+        window.syncBridge.broadcastState(this.state, isExplicitClear);
       }
     } catch (e) {
       console.error('Failed to save state to localStorage:', e);
@@ -164,17 +168,26 @@ class StateStore {
     const currentSession = this.state.currentUser;
     const incomingTime = Number(newState.updatedAt) || Date.now();
 
+    const incomingMatchups = Array.isArray(newState.tournamentMatchups) ? newState.tournamentMatchups : null;
+    const currentMatchups = this.state.tournamentMatchups || [];
+    // Only replace with empty array if explicitly cleared by admin, never wipe local matchups on cold empty payload!
+    const finalMatchups = (incomingMatchups && incomingMatchups.length > 0)
+      ? incomingMatchups
+      : (newState.isExplicitClear ? [] : currentMatchups);
+
+    const incomingRounds = Array.isArray(newState.tournamentRounds) && newState.tournamentRounds.length > 0 ? newState.tournamentRounds : (this.state.tournamentRounds || INITIAL_STATE.tournamentRounds);
+
     this.state = {
       ...this.state,
       tournamentName: newState.tournamentName || this.state.tournamentName,
-      teams: Array.isArray(newState.teams) ? newState.teams : this.state.teams,
-      racers: Array.isArray(newState.racers) ? newState.racers : this.state.racers,
+      teams: Array.isArray(newState.teams) && newState.teams.length > 0 ? newState.teams : (this.state.teams || []),
+      racers: Array.isArray(newState.racers) && newState.racers.length > 0 ? newState.racers : (this.state.racers || []),
       accessCodes: Array.isArray(newState.accessCodes) ? newState.accessCodes : (this.state.accessCodes || DEFAULT_ACCESS_CODES),
       activeAuction: newState.activeAuction || this.state.activeAuction,
       auctionHistory: Array.isArray(newState.auctionHistory) ? newState.auctionHistory : this.state.auctionHistory,
-      tournamentRounds: Array.isArray(newState.tournamentRounds) && newState.tournamentRounds.length > 0 ? newState.tournamentRounds : (this.state.tournamentRounds || INITIAL_STATE.tournamentRounds),
+      tournamentRounds: incomingRounds,
       activeTournamentRoundId: newState.activeTournamentRoundId || this.state.activeTournamentRoundId,
-      tournamentMatchups: Array.isArray(newState.tournamentMatchups) ? newState.tournamentMatchups : (this.state.tournamentMatchups || []),
+      tournamentMatchups: finalMatchups,
       currentUser: currentSession,
       updatedAt: incomingTime
     };
@@ -1047,7 +1060,7 @@ class StateStore {
     } else {
       this.state.tournamentMatchups = [];
     }
-    this.saveState();
+    this.saveState(true, true);
   }
 }
 

@@ -233,7 +233,7 @@ class SyncBridge {
     }
   }
 
-  broadcastState(fullState) {
+  broadcastState(fullState, isExplicitClear = false) {
     const payloadToSync = {
       tournamentName: fullState.tournamentName,
       teams: fullState.teams,
@@ -245,7 +245,8 @@ class SyncBridge {
       activeTournamentRoundId: fullState.activeTournamentRoundId || 'round_qualifiers',
       tournamentMatchups: fullState.tournamentMatchups || [],
       updatedAt: Date.now(),
-      updatedBy: fullState.currentUser?.adminName || 'Admin'
+      updatedBy: fullState.currentUser?.adminName || 'Admin',
+      isExplicitClear
     };
 
     const stateHash = JSON.stringify({
