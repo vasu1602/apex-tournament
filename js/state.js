@@ -114,6 +114,7 @@ class StateStore {
 
   saveState(broadcast = true) {
     try {
+      this.state.updatedAt = Date.now();
       const stateToPersist = {
         tournamentName: this.state.tournamentName,
         teams: this.state.teams,
@@ -124,7 +125,8 @@ class StateStore {
         tournamentRounds: this.state.tournamentRounds || INITIAL_STATE.tournamentRounds,
         activeTournamentRoundId: this.state.activeTournamentRoundId || 'round_qualifiers',
         tournamentMatchups: this.state.tournamentMatchups || [],
-        currentUser: this.state.currentUser
+        currentUser: this.state.currentUser,
+        updatedAt: this.state.updatedAt
       };
       if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToPersist));
@@ -160,6 +162,8 @@ class StateStore {
   // Receive state from other tabs & cloud sync
   applyExternalState(newState) {
     const currentSession = this.state.currentUser;
+    const incomingTime = Number(newState.updatedAt) || Date.now();
+
     this.state = {
       ...this.state,
       tournamentName: newState.tournamentName || this.state.tournamentName,
@@ -171,7 +175,8 @@ class StateStore {
       tournamentRounds: Array.isArray(newState.tournamentRounds) && newState.tournamentRounds.length > 0 ? newState.tournamentRounds : (this.state.tournamentRounds || INITIAL_STATE.tournamentRounds),
       activeTournamentRoundId: newState.activeTournamentRoundId || this.state.activeTournamentRoundId,
       tournamentMatchups: Array.isArray(newState.tournamentMatchups) ? newState.tournamentMatchups : (this.state.tournamentMatchups || []),
-      currentUser: currentSession
+      currentUser: currentSession,
+      updatedAt: incomingTime
     };
 
     // Persist to local storage so future page reloads retain this latest state
@@ -187,7 +192,8 @@ class StateStore {
           tournamentRounds: this.state.tournamentRounds,
           activeTournamentRoundId: this.state.activeTournamentRoundId,
           tournamentMatchups: this.state.tournamentMatchups,
-          currentUser: currentSession
+          currentUser: currentSession,
+          updatedAt: incomingTime
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToPersist));
       }

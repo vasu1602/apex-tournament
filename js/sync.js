@@ -89,13 +89,10 @@ class SyncBridge {
 
   // --- SERVER & CLOUD API SYNC (Works on Vercel + Local Wi-Fi) ---
   initLocalServerSync() {
-    this.lastBoxEventId = null;
+    // Initial fetch on load
     this.pollLocalState();
 
-    // Fast 800ms polling fallback for 100% guaranteed sync across all devices
-    setInterval(() => this.pollLocalState(), 800);
-
-    // Listen for live Server-Sent Events from local server
+    // Listen for live Server-Sent Events from local server (for local network Wi-Fi)
     if (typeof EventSource !== 'undefined') {
       try {
         this.eventSource = new EventSource('/api/events');
@@ -123,25 +120,11 @@ class SyncBridge {
   }
 
   pollLocalState() {
-    // 1. Poll State
     fetch('/api/state')
       .then(res => res.json())
       .then(data => {
         if (data && data.success && data.state) {
           this.handleRemoteStateUpdate(data.state);
-        }
-      })
-      .catch(() => {});
-
-    // 2. Poll Mystery Box Events
-    fetch('/api/box-event')
-      .then(res => res.json())
-      .then(data => {
-        if (data && data.success && data.event && data.event.id !== this.lastBoxEventId) {
-          this.lastBoxEventId = data.event.id;
-          if (data.event.payload) {
-            this.handleMessage(data.event.payload);
-          }
         }
       })
       .catch(() => {});
@@ -212,7 +195,23 @@ class SyncBridge {
   handleRemoteStateUpdate(remoteData) {
     if (!remoteData || typeof remoteData !== 'object') return;
 
-    // Avoid self-echo loop
+    const currentState = store.getState();
+    const isAdmin = Boolean(currentState.currentUser && currentState.currentUser.isAuthenticated);
+
+    const remoteTime = Number(remoteData.updatedAt) || 0;
+    const localTime = Number(currentState.updatedAt) || 0;
+
+    // 1. If this window is an authenticated Admin, do NOT overwrite with an older or equal state!
+    if (isAdmin && remoteTime <= localTime) {
+      return;
+    }
+
+    // 2. For viewers: only apply newer updates (or initial state if viewer has nothing)
+    if (!isAdmin && remoteTime < localTime && (currentState.racers?.length > 0 || currentState.tournamentMatchups?.length > 0)) {
+      return;
+    }
+
+    // Avoid redundant renders if hash is identical
     const stateHash = JSON.stringify({
       activeAuction: remoteData.activeAuction,
       racersCount: remoteData.racers?.length,
@@ -233,7 +232,7 @@ class SyncBridge {
     } finally {
       setTimeout(() => {
         this.isApplyingRemoteState = false;
-      }, 80);
+      }, 50);
     }
   }
 
