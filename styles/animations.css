@@ -127,8 +127,8 @@
   animation: goldShine 3s infinite linear;
 }
 
-/* Continuous Clockwise Logo Rotation Animation */
-@keyframes logoRotateClockwise {
+/* Continuous Clockwise 360-Degree Logo Rotation Animation */
+@keyframes spinClockwise {
   0% {
     transform: rotate(0deg);
   }
@@ -137,8 +137,22 @@
   }
 }
 
-.anim-logo-spin {
-  animation: logoRotateClockwise 8s linear infinite;
-  transform-origin: center center;
+.logo-rotating-border {
+  transform-origin: 60px 60px;
+  animation: spinClockwise 6s linear infinite !important;
   will-change: transform;
+}
+
+.logo-rotating-core {
+  transform-origin: 60px 60px;
+  animation: spinClockwise 10s linear infinite !important;
+  will-change: transform;
+}
+
+.brand-wrapper:hover .logo-rotating-border {
+  animation-duration: 2.2s !important;
+}
+
+.brand-wrapper:hover .logo-rotating-core {
+  animation-duration: 3.5s !important;
 }

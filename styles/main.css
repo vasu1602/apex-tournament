@@ -148,8 +148,8 @@ html, body {
 }
 
 .brand-logo-box {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -158,20 +158,16 @@ html, body {
   box-shadow: none;
 }
 
-.brand-logo-img {
-  width: 24px;
-  height: 24px;
-  object-fit: contain;
+.brand-logo-svg {
+  width: 28px;
+  height: 28px;
   filter: drop-shadow(0 0 6px rgba(0, 242, 254, 0.45));
-  animation: logoRotateClockwise 8s linear infinite;
-  transform-origin: center center;
-  will-change: transform;
-  transition: filter var(--transition-fast);
+  overflow: visible;
+  transition: transform var(--transition-fast), filter var(--transition-fast);
 }
 
-.brand-wrapper:hover .brand-logo-img {
-  animation-duration: 3.5s;
-  filter: drop-shadow(0 0 10px var(--accent-cyan)) drop-shadow(0 0 6px var(--accent-red));
+.brand-wrapper:hover .brand-logo-svg {
+  filter: drop-shadow(0 0 10px var(--accent-cyan)) drop-shadow(0 0 8px var(--accent-red));
 }
 
 .brand-text {
