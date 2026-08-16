@@ -588,20 +588,49 @@ class AdminView {
     document.getElementById('general-modal').classList.add('active');
   }
 
-  // Backup / Export / Import Settings Modal
+  // Backup / Export / Import & Cloud Sync Settings Modal
   openSettingsModal() {
     const modalBody = document.getElementById('general-modal-body');
     const modalTitle = document.getElementById('general-modal-title');
     if (!modalBody || !modalTitle) return;
 
-    modalTitle.textContent = '⚙️ Tournament Data Center';
+    modalTitle.textContent = '⚙️ Tournament Data & Cloud Sync';
+
+    const viewerUrl = window.syncBridge ? window.syncBridge.getViewerShareUrl() : window.location.href;
+    const isCloudConnected = window.syncBridge ? window.syncBridge.isCloudConnected : false;
+    const roomId = window.syncBridge ? window.syncBridge.roomId : 'soulcity2026';
 
     modalBody.innerHTML = `
       <div style="display:flex; flex-direction:column; gap:1.25rem;">
+        <!-- Live Cloud Multi-Device Sync Card -->
+        <div style="background:rgba(0,242,254,0.06); padding:1.15rem; border-radius:var(--radius-md); border:1px solid rgba(0,242,254,0.3);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+            <h4 style="font-family:var(--font-display); font-size:0.95rem; color:var(--accent-cyan); display:flex; align-items:center; gap:0.5rem;">
+              <span>🌐</span> Live Cloud Real-Time Sync
+            </h4>
+            <span class="section-tag" style="background:${isCloudConnected ? 'rgba(0,255,135,0.15)' : 'rgba(0,242,254,0.15)'}; color:${isCloudConnected ? 'var(--accent-green)' : 'var(--accent-cyan)'}; border-color:${isCloudConnected ? 'rgba(0,255,135,0.4)' : 'rgba(0,242,254,0.4)'}; font-size:0.7rem;">
+              ${isCloudConnected ? '● Cloud Connected' : '● Room: ' + roomId}
+            </span>
+          </div>
+          <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:0.75rem;">
+            When deployed on Vercel, share the <strong>Public Viewer Link</strong> with spectators. Whenever you start an auction, mark sold/unsold, or adjust prices on your device, all viewers across the internet see the updates instantly in real time without needing admin access!
+          </p>
+
+          <div style="display:flex; gap:0.5rem; flex-direction:column;">
+            <label class="control-label" style="font-size:0.72rem;">Public Viewer Live Link</label>
+            <div style="display:flex; gap:0.5rem;">
+              <input type="text" id="public-viewer-url-input" class="form-input" readonly value="${viewerUrl}" style="background:rgba(10,14,22,0.9); font-size:0.8rem;">
+              <button class="btn btn-cyan" style="white-space:nowrap;" onclick="window.app.copyViewerShareLink()">
+                🔗 Copy Link
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div style="background:rgba(10,14,22,0.7); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border-subtle);">
           <h4 style="font-family:var(--font-display); font-size:0.95rem; margin-bottom:0.4rem;">Export Tournament State</h4>
           <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.75rem;">Download all teams, rosters, bids, and racers as a JSON backup file.</p>
-          <button class="btn btn-cyan" onclick="window.app.exportTournamentJSON()">
+          <button class="btn btn-outline" onclick="window.app.exportTournamentJSON()">
             💾 Download Backup JSON
           </button>
         </div>

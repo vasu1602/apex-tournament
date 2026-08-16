@@ -279,6 +279,14 @@ class AppController {
     this.showToast(`Copied code "${code}" to clipboard!`, 'info');
   }
 
+  copyViewerShareLink() {
+    const url = window.syncBridge ? window.syncBridge.getViewerShareUrl() : window.location.href;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url);
+    }
+    this.showToast('Copied Live Viewer Link to clipboard! Share this with your audience.', 'success');
+  }
+
   handleRevokeAccessCode(codeId, code) {
     if (confirm(`Are you sure you want to revoke access passcode "${code}"?`)) {
       const res = store.revokeAccessCode(codeId);
