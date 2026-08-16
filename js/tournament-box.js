@@ -520,7 +520,7 @@ class TournamentBoxView {
             <div class="face-off-versus-slots">
               <!-- Slot 1: Team 1 (First Box Opening) -->
               <div class="face-off-slot ${this.pendingTeam1 ? 'filled' : 'empty'}" style="${this.pendingTeam1 ? `border-color:${this.pendingTeam1.color};` : ''}">
-                <span class="slot-badge-label">CREW 1 (DRAW #1)</span>
+                <span class="slot-badge-label">CREW 1</span>
                 ${this.pendingTeam1 ? `
                   <div class="slot-team-content">
                     <div class="slot-team-avatar" style="border-color:${this.pendingTeam1.color};">
@@ -541,7 +541,7 @@ class TournamentBoxView {
 
               <!-- Slot 2: Team 2 (Second Box Opening) -->
               <div class="face-off-slot ${this.pendingTeam2 ? 'filled' : 'empty'}" style="${this.pendingTeam2 ? `border-color:${this.pendingTeam2.color};` : ''}">
-                <span class="slot-badge-label">CREW 2 (DRAW #2)</span>
+                <span class="slot-badge-label">CREW 2</span>
                 ${this.pendingTeam2 ? `
                   <div class="slot-team-content">
                     <div class="slot-team-avatar" style="border-color:${this.pendingTeam2.color};">
