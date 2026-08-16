@@ -18,6 +18,9 @@ class TournamentBoxView {
     this.pendingTeam1 = null;
     this.pendingTeam2 = null;
     this.isDrawing = false;
+    this.isCooldown = false;
+    this.cooldownSeconds = 0;
+    this.cooldownTimer = null;
     this.boxState = 'idle'; // 'idle' | 'shaking' | 'open'
     this.emergingTeam = null;
 
@@ -108,6 +111,23 @@ class TournamentBoxView {
     return false;
   }
 
+  startCooldown(seconds = 2) {
+    this.isCooldown = true;
+    this.cooldownSeconds = seconds;
+    if (this.cooldownTimer) clearInterval(this.cooldownTimer);
+    this.renderTournamentView();
+
+    this.cooldownTimer = setInterval(() => {
+      this.cooldownSeconds -= 1;
+      if (this.cooldownSeconds <= 0) {
+        clearInterval(this.cooldownTimer);
+        this.cooldownTimer = null;
+        this.isCooldown = false;
+      }
+      this.renderTournamentView();
+    }, 1000);
+  }
+
   // --- MYSTERY BOX SHAKE & DRAW ACTION (ADMIN ONLY) ---
   triggerBoxDraw() {
     const { currentUser, tournamentRounds = [{ id: 'round_qualifiers', name: 'Qualifiers', isLocked: false }], activeTournamentRoundId = 'round_qualifiers' } = store.getState();
@@ -124,7 +144,8 @@ class TournamentBoxView {
       return;
     }
 
-    if (this.isDrawing) return;
+    // Guard against rapid clicking / double click
+    if (this.isDrawing || this.isCooldown) return;
 
     if (this.activeBoxTeams.length === 0) {
       if (window.app) window.app.showToast(`All teams have been drawn for ${activeRound.name}! Click Refill Box or create a new round.`, 'info');
@@ -145,7 +166,7 @@ class TournamentBoxView {
       soundFX.play('bid');
     }, 280);
 
-    // Shake duration: 1.1s
+    // Shake duration: 1.4s (realistic suspense)
     setTimeout(() => {
       clearInterval(shakeInterval);
 
@@ -178,8 +199,10 @@ class TournamentBoxView {
           this.pendingTeam1 = drawnTeam;
           this.activeBoxTeams = this.activeBoxTeams.filter((t) => t.id !== drawnTeam.id);
           if (window.app && window.app.activeTab === 'tournament-view') {
-            window.app.showToast(`📦 Crew 1 Drawn: ${drawnTeam.name}! Click box again to draw Crew 2!`, 'success');
+            window.app.showToast(`📦 Crew 1 Drawn: ${drawnTeam.name}! Wait a moment before drawing Crew 2.`, 'success');
           }
+          // Cooldown for 2 seconds to prevent accidental double-clicks
+          this.startCooldown(2);
         } else if (!this.pendingTeam2 && drawnTeam.id !== this.pendingTeam1.id) {
           // Slot into Place 2 & Lock Matchup
           this.pendingTeam2 = drawnTeam;
@@ -192,10 +215,14 @@ class TournamentBoxView {
           setTimeout(() => {
             this.confirmMatchup();
           }, 800);
+
+          // Cooldown during match celebration
+          this.startCooldown(3);
         } else {
           this.pendingTeam1 = drawnTeam;
           this.pendingTeam2 = null;
           this.activeBoxTeams = this.activeBoxTeams.filter((t) => t.id !== drawnTeam.id);
+          this.startCooldown(2);
         }
 
         // 3. Broadcast final slot in event to viewers!
@@ -209,9 +236,9 @@ class TournamentBoxView {
         this.emergingTeam = null;
         this.isDrawing = false;
         this.renderTournamentView();
-      }, 1000);
+      }, 1200);
 
-    }, 1100);
+    }, 1400);
   }
 
   // --- HANDLE LIVE BOX EVENTS ON VIEWERS' SCREENS ---
@@ -572,18 +599,18 @@ class TournamentBoxView {
 
           <!-- The 3D Interactive Mystery Vault Box -->
           <div class="vault-stage-wrapper">
-            <div class="mystery-vault-box ${this.boxState === 'shaking' ? 'is-shaking' : ''} ${this.boxState === 'open' ? 'is-open' : ''} ${this.isDrawing ? 'is-busy' : ''}" 
-                 style="${!isAdmin || activeRound.isLocked ? 'cursor:default;' : ''}"
-                 onclick="${activeRound.isLocked ? '' : 'window.tournamentBox.triggerBoxDraw()'}" 
-                 title="${isAdmin ? (activeRound.isLocked ? 'This round is locked' : 'Click to Open the Box!') : 'Live Race Vault (Controlled by Race Admin)'}">
+            <div class="mystery-vault-box ${this.boxState === 'shaking' ? 'is-shaking' : ''} ${this.boxState === 'open' ? 'is-open' : ''} ${this.isDrawing ? 'is-busy' : ''} ${this.isCooldown ? 'is-cooldown' : ''}" 
+                 style="${!isAdmin || activeRound.isLocked || this.isDrawing || this.isCooldown ? 'cursor:not-allowed;' : ''}"
+                 onclick="${activeRound.isLocked || this.isDrawing || this.isCooldown ? '' : 'window.tournamentBox.triggerBoxDraw()'}" 
+                 title="${isAdmin ? (activeRound.isLocked ? 'This round is locked' : (this.isCooldown ? `Please wait ${this.cooldownSeconds}s before next draw` : 'Click to Open the Box!')) : 'Live Race Vault (Controlled by Race Admin)'}">
               
               <!-- Lid -->
               <div class="vault-lid"></div>
 
               <!-- Base Chamber -->
               <div class="vault-base">
-                <div class="vault-core-emblem">${activeRound.isLocked ? '🔒' : '🏎️'}</div>
-                <div class="vault-core-label">${isAdmin ? (activeRound.isLocked ? 'ROUND LOCKED' : 'CLICK TO OPEN') : 'APEX VAULT'}</div>
+                <div class="vault-core-emblem">${activeRound.isLocked ? '🔒' : (this.isCooldown ? '⏳' : '🏎️')}</div>
+                <div class="vault-core-label">${isAdmin ? (activeRound.isLocked ? 'ROUND LOCKED' : (this.isCooldown ? `READY IN ${this.cooldownSeconds}S` : 'CLICK TO OPEN')) : 'APEX VAULT'}</div>
               </div>
 
               <!-- Emerging Holographic Team Card when Opening -->
@@ -604,15 +631,15 @@ class TournamentBoxView {
           <!-- Box Action Trigger / Spectator Status Indicator -->
           <div style="width:100%; display:flex; flex-direction:column; gap:0.6rem;">
             ${isAdmin ? `
-              <button class="btn btn-cyan btn-lg open-box-cta-btn" onclick="window.tournamentBox.triggerBoxDraw()" ${this.activeBoxTeams.length < 1 || this.isDrawing || activeRound.isLocked ? 'disabled' : ''} style="${activeRound.isLocked ? 'background:rgba(255,184,0,0.15); border-color:var(--accent-gold); color:var(--accent-gold); cursor:not-allowed;' : ''}">
-                ${activeRound.isLocked ? `🔒 ${activeRound.name.toUpperCase()} LOCKED` : (this.isDrawing ? (this.boxState === 'shaking' ? '⚡ SHAKING BOX...' : '✨ OPENING VAULT...') : (this.activeBoxTeams.length === 0 ? '🏁 BOX EMPTY' : '📦 CLICK BOX TO DRAW TEAM'))}
+              <button class="btn btn-cyan btn-lg open-box-cta-btn" onclick="window.tournamentBox.triggerBoxDraw()" ${this.activeBoxTeams.length < 1 || this.isDrawing || this.isCooldown || activeRound.isLocked ? 'disabled' : ''} style="${activeRound.isLocked ? 'background:rgba(255,184,0,0.15); border-color:var(--accent-gold); color:var(--accent-gold); cursor:not-allowed;' : (this.isCooldown ? 'opacity:0.75; cursor:not-allowed;' : '')}">
+                ${activeRound.isLocked ? `🔒 ${activeRound.name.toUpperCase()} LOCKED` : (this.isDrawing ? (this.boxState === 'shaking' ? '⚡ SHAKING BOX...' : '✨ OPENING VAULT...') : (this.isCooldown ? `⏳ READY IN ${this.cooldownSeconds}s (PREVENTS DOUBLE CLICK)` : (this.activeBoxTeams.length === 0 ? '🏁 BOX EMPTY' : (!this.pendingTeam1 ? '📦 OPEN BOX TO DRAW CREW 1' : '📦 OPEN BOX TO DRAW CREW 2'))))}
               </button>
 
               <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
                 <span style="font-size:0.78rem; color:var(--text-muted);">
-                  ${activeRound.isLocked ? '🔒 Unlock this round to draw matches' : (!this.pendingTeam1 ? '👉 Open box to draw Crew 1' : (!this.pendingTeam2 ? '👉 Open box again to draw Crew 2' : '✅ Matchup formed!'))}
+                  ${activeRound.isLocked ? '🔒 Unlock this round to draw matches' : (this.isCooldown ? `⏳ Cooldown active (${this.cooldownSeconds}s) to prevent double clicks` : (!this.pendingTeam1 ? '👉 Open box to draw Crew 1' : (!this.pendingTeam2 ? '👉 Open box again to draw Crew 2' : '✅ Matchup formed!')))}
                 </span>
-                <button class="btn btn-outline btn-sm" onclick="window.tournamentBox.resetBoxPool()" title="Refill box with all un-matched teams for this round" ${this.isDrawing || activeRound.isLocked ? 'disabled' : ''}>
+                <button class="btn btn-outline btn-sm" onclick="window.tournamentBox.resetBoxPool()" title="Refill box with all un-matched teams for this round" ${this.isDrawing || this.isCooldown || activeRound.isLocked ? 'disabled' : ''}>
                   🔄 Refill Box
                 </button>
               </div>
