@@ -148,27 +148,27 @@ html, body {
 }
 
 .brand-logo-box {
-  width: 30px;
-  height: 30px;
-  border-radius: var(--radius-sm);
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(14, 20, 32, 0.85);
-  border: 1px solid rgba(0, 242, 254, 0.35);
-  box-shadow: 0 0 10px rgba(0, 242, 254, 0.2), 0 0 15px rgba(255, 42, 85, 0.1);
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
-.brand-wrapper:hover .brand-logo-box {
-  transform: scale(1.05);
-  box-shadow: 0 0 14px rgba(0, 242, 254, 0.35), 0 0 20px rgba(255, 42, 85, 0.2);
+.brand-wrapper:hover .brand-logo-img {
+  transform: scale(1.1);
+  filter: drop-shadow(0 0 8px var(--accent-cyan));
 }
 
 .brand-logo-img {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   object-fit: contain;
+  filter: drop-shadow(0 0 5px rgba(0, 242, 254, 0.4));
+  transition: transform var(--transition-fast), filter var(--transition-fast);
 }
 
 .brand-text {
