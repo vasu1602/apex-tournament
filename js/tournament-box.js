@@ -679,7 +679,7 @@ class TournamentBoxView {
               <div class="face-off-slot ${this.pendingTeam1 ? 'filled' : 'empty'}" style="${this.pendingTeam1 ? `border-color:${this.pendingTeam1.color};` : ''}">
                 ${this.pendingTeam1 ? `
                   <span class="slot-badge-label">CREW 1</span>
-                  <div class="slot-team-content">
+                  <div class="slot-team-content" style="cursor:pointer;" onclick="window.app.inspectTeamRoster('${this.pendingTeam1.id}')" title="Click to view ${this.pendingTeam1.name} player roster">
                     <div class="slot-team-avatar" style="border-color:${this.pendingTeam1.color};">
                       ${this.pendingTeam1.logoUrl ? `<img src="${this.pendingTeam1.logoUrl}" style="width:100%; height:100%; object-fit:cover;">` : (this.pendingTeam1.avatar ? `<img src="${this.pendingTeam1.avatar}" style="width:100%; height:100%; object-fit:cover;">` : '🏎️')}
                     </div>
@@ -697,7 +697,7 @@ class TournamentBoxView {
               <div class="face-off-slot ${this.pendingTeam2 ? 'filled' : 'empty'}" style="${this.pendingTeam2 ? `border-color:${this.pendingTeam2.color};` : ''}">
                 ${this.pendingTeam2 ? `
                   <span class="slot-badge-label">CREW 2</span>
-                  <div class="slot-team-content">
+                  <div class="slot-team-content" style="cursor:pointer;" onclick="window.app.inspectTeamRoster('${this.pendingTeam2.id}')" title="Click to view ${this.pendingTeam2.name} player roster">
                     <div class="slot-team-avatar" style="border-color:${this.pendingTeam2.color};">
                       ${this.pendingTeam2.logoUrl ? `<img src="${this.pendingTeam2.logoUrl}" style="width:100%; height:100%; object-fit:cover;">` : (this.pendingTeam2.avatar ? `<img src="${this.pendingTeam2.avatar}" style="width:100%; height:100%; object-fit:cover;">` : '⚡')}
                     </div>
@@ -827,22 +827,38 @@ class TournamentBoxView {
                     <div class="fixture-teams-versus">
                       <!-- Team 1 -->
                       <div class="fixture-team-pill ${m.winnerId === m.team1.id ? 'is-winner' : (m.winnerId && m.winnerId !== m.team1.id ? 'is-eliminated' : '')}" 
-                           style="border-left: 3px solid ${m.team1.color}; ${isAdmin ? 'cursor:pointer;' : 'cursor:default;'}" 
-                           onclick="${isAdmin ? `window.tournamentBox.toggleWinner('${m.id}', '${m.team1.id}')` : ''}" 
-                           title="${isAdmin ? 'Click to mark as winner' : ''}">
-                        <span class="fixture-team-name">${m.team1.name}</span>
-                        ${m.winnerId === m.team1.id ? '<span class="winner-crown">👑 WINNER</span>' : ''}
+                           style="border-left: 3px solid ${m.team1.color}; cursor:pointer;" 
+                           onclick="${!isAdmin ? `window.app.inspectTeamRoster('${m.team1.id}')` : ''}" 
+                           title="${!isAdmin ? `Click to view ${m.team1.name} player roster` : ''}">
+                        <span class="fixture-team-name" onclick="${isAdmin ? `event.stopPropagation(); window.app.inspectTeamRoster('${m.team1.id}')` : ''}" title="Click to view player roster">
+                          ${m.team1.name}
+                        </span>
+                        ${isAdmin ? `
+                          <button class="winner-toggle-badge ${m.winnerId === m.team1.id ? 'is-active' : ''}" 
+                                  onclick="event.stopPropagation(); window.tournamentBox.toggleWinner('${m.id}', '${m.team1.id}')" 
+                                  title="${m.winnerId === m.team1.id ? 'Winner (Click to unset)' : 'Click to declare winner'}">
+                            ${m.winnerId === m.team1.id ? '👑 WINNER' : '🏆'}
+                          </button>
+                        ` : (m.winnerId === m.team1.id ? '<span class="winner-crown">👑 WINNER</span>' : '')}
                       </div>
 
                       <span class="fixture-vs-text">VS</span>
 
                       <!-- Team 2 -->
                       <div class="fixture-team-pill ${m.winnerId === m.team2.id ? 'is-winner' : (m.winnerId && m.winnerId !== m.team2.id ? 'is-eliminated' : '')}" 
-                           style="border-left: 3px solid ${m.team2.color}; ${isAdmin ? 'cursor:pointer;' : 'cursor:default;'}" 
-                           onclick="${isAdmin ? `window.tournamentBox.toggleWinner('${m.id}', '${m.team2.id}')` : ''}" 
-                           title="${isAdmin ? 'Click to mark as winner' : ''}">
-                        <span class="fixture-team-name">${m.team2.name}</span>
-                        ${m.winnerId === m.team2.id ? '<span class="winner-crown">👑 WINNER</span>' : ''}
+                           style="border-left: 3px solid ${m.team2.color}; cursor:pointer;" 
+                           onclick="${!isAdmin ? `window.app.inspectTeamRoster('${m.team2.id}')` : ''}" 
+                           title="${!isAdmin ? `Click to view ${m.team2.name} player roster` : ''}">
+                        <span class="fixture-team-name" onclick="${isAdmin ? `event.stopPropagation(); window.app.inspectTeamRoster('${m.team2.id}')` : ''}" title="Click to view player roster">
+                          ${m.team2.name}
+                        </span>
+                        ${isAdmin ? `
+                          <button class="winner-toggle-badge ${m.winnerId === m.team2.id ? 'is-active' : ''}" 
+                                  onclick="event.stopPropagation(); window.tournamentBox.toggleWinner('${m.id}', '${m.team2.id}')" 
+                                  title="${m.winnerId === m.team2.id ? 'Winner (Click to unset)' : 'Click to declare winner'}">
+                            ${m.winnerId === m.team2.id ? '👑 WINNER' : '🏆'}
+                          </button>
+                        ` : (m.winnerId === m.team2.id ? '<span class="winner-crown">👑 WINNER</span>' : '')}
                       </div>
                     </div>
 

@@ -2146,6 +2146,32 @@
   border-radius: var(--radius-pill);
 }
 
+.winner-toggle-badge {
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--text-muted);
+  border-radius: var(--radius-pill);
+  padding: 0.15rem 0.45rem;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.winner-toggle-badge:hover {
+  background: rgba(255, 184, 0, 0.2);
+  color: #fff;
+  border-color: var(--accent-gold);
+}
+
+.winner-toggle-badge.is-active {
+  background: var(--accent-gold);
+  color: #000;
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 10px rgba(255, 184, 0, 0.4);
+}
+
 .fixture-vs-text {
   font-family: var(--font-display);
   font-size: 0.75rem;

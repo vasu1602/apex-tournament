@@ -425,6 +425,10 @@ class AppController {
     viewerView.renderTeamModal(teamId);
   }
 
+  inspectTeamRoster(teamId) {
+    viewerView.renderMatchupTeamRosterModal(teamId);
+  }
+
   inspectRacer(racerId) {
     viewerView.renderRacerModal(racerId);
   }

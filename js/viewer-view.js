@@ -724,6 +724,87 @@ class ViewerView {
 
     document.getElementById('general-modal').classList.add('active');
   }
+
+  // 6. Render Matchup Team Player Roster Modal (Photo & Name only)
+  renderMatchupTeamRosterModal(teamId) {
+    const { teams, racers } = store.getState();
+    let team = teams.find((t) => t.id === teamId);
+
+    // Fallback if team is from default championship roster
+    if (!team) {
+      const defaultTeams = [
+        { id: 't_empire', name: 'Empire Imports', color: '#ff1744' },
+        { id: 't_autoexotic', name: 'Auto Exotic', color: '#0055ff' },
+        { id: 't_soochi', name: 'Soochi', color: '#ba68c8' },
+        { id: 't_amore', name: 'Amore', color: '#ad1457' },
+        { id: 't_luxary', name: 'Luxary Autos', color: '#9e9d24' },
+        { id: 't_beenys', name: 'Beenys', color: '#8e24aa' }
+      ];
+      team = defaultTeams.find((t) => t.id === teamId) || {
+        id: teamId,
+        name: 'Racing Crew',
+        color: '#00e5ff',
+        logoUrl: null,
+        avatar: null,
+        roster: []
+      };
+    }
+
+    const modalBody = document.getElementById('general-modal-body');
+    const modalTitle = document.getElementById('general-modal-title');
+    const modal = document.getElementById('general-modal');
+    const modalCard = modal?.querySelector('.modal-card');
+    if (!modalBody || !modalTitle) return;
+
+    if (modalCard) modalCard.classList.remove('modal-card-xl');
+
+    modalTitle.innerHTML = `
+      <div style="display:flex; align-items:center; gap:0.6rem;">
+        <div style="width:30px; height:30px; border-radius:50%; border:2px solid ${team.color || '#00e5ff'}; overflow:hidden; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.5);">
+          ${team.logoUrl ? `<img src="${team.logoUrl}" style="width:100%; height:100%; object-fit:cover;">` : (team.avatar ? `<img src="${team.avatar}" style="width:100%; height:100%; object-fit:cover;">` : '🏎️')}
+        </div>
+        <span>${team.name} • Team Players</span>
+      </div>
+    `;
+
+    // Filter players acquired by this team
+    const teamRacers = (team.roster && team.roster.length > 0)
+      ? team.roster
+      : racers.filter((r) => r.soldToTeamId === team.id);
+
+    modalBody.innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:1.15rem;">
+        ${teamRacers.length === 0 ? `
+          <div style="text-align:center; padding:2.5rem 1rem; color:var(--text-muted); background:rgba(10,14,22,0.6); border-radius:var(--radius-md); border:1px dashed var(--border-subtle);">
+            <div style="font-size:2.5rem; margin-bottom:0.4rem;">🏎️</div>
+            <div style="font-family:var(--font-display); font-size:1.15rem; color:#fff; margin-bottom:0.3rem;">No Players Signed Yet</div>
+            <div style="font-size:0.82rem; color:var(--text-muted);">This team has not acquired any players from the auction yet.</div>
+          </div>
+        ` : `
+          <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(130px, 1fr)); gap:0.85rem;">
+            ${teamRacers.map((driver) => `
+              <div style="background:rgba(16,22,35,0.92); border:1px solid var(--border-subtle); border-top:3px solid ${team.color || 'var(--accent-cyan)'}; border-radius:var(--radius-md); padding:1rem 0.6rem; display:flex; flex-direction:column; align-items:center; text-align:center; gap:0.6rem;">
+                <div style="width:78px; height:78px; border-radius:50%; border:2px solid ${team.color || 'var(--accent-cyan)'}; overflow:hidden; box-shadow:0 0 12px rgba(0,0,0,0.6);">
+                  <img src="${driver.photoUrl || driver.avatar || 'favicon.svg'}" alt="${driver.name}" style="width:100%; height:100%; object-fit:cover;">
+                </div>
+                <div style="font-family:var(--font-display); font-size:0.95rem; font-weight:800; color:#ffffff; line-height:1.25; word-break:break-word;">
+                  ${driver.name}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `}
+
+        <div style="display:flex; justify-content:flex-end; margin-top:0.35rem;">
+          <button type="button" class="btn btn-outline btn-sm" onclick="window.app.closeModal()">
+            ✕ Close
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('general-modal').classList.add('active');
+  }
 }
 
 export const viewerView = new ViewerView();
