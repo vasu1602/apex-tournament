@@ -105,22 +105,33 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // 3. POST /api/box-event - Broadcast live box shake and reveal animation events
-  if (pathname === '/api/box-event' && req.method === 'POST') {
-    let body = '';
-    req.on('data', chunk => { body += chunk; });
-    req.on('end', () => {
-      try {
-        const payload = JSON.parse(body);
-        broadcastToClients({ type: 'BOX_EVENT', payload });
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true }));
-      } catch (err) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: false, error: err.message }));
-      }
-    });
-    return;
+  // 3. /api/box-event - Broadcast & poll live box shake and reveal animation events
+  if (pathname === '/api/box-event') {
+    if (req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => { body += chunk; });
+      req.on('end', () => {
+        try {
+          const payload = JSON.parse(body);
+          global.lastLocalBoxEvent = {
+            id: Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+            payload: { type: 'BOX_EVENT', payload },
+            timestamp: Date.now()
+          };
+          broadcastToClients({ type: 'BOX_EVENT', payload });
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true }));
+        } catch (err) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: err.message }));
+        }
+      });
+      return;
+    } else if (req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, event: global.lastLocalBoxEvent || null }));
+      return;
+    }
   }
 
   // 3. GET /api/events - Server-Sent Events (SSE) stream for live push

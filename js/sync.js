@@ -87,12 +87,13 @@ class SyncBridge {
     }
   }
 
-  // --- LOCAL SERVER SYNC (For Wi-Fi, LAN, PC + Mobile on same server) ---
+  // --- SERVER & CLOUD API SYNC (Works on Vercel + Local Wi-Fi) ---
   initLocalServerSync() {
+    this.lastBoxEventId = null;
     this.pollLocalState();
 
-    // Regular interval poll fallback
-    setInterval(() => this.pollLocalState(), 2000);
+    // Fast 800ms polling fallback for 100% guaranteed sync across all devices
+    setInterval(() => this.pollLocalState(), 800);
 
     // Listen for live Server-Sent Events from local server
     if (typeof EventSource !== 'undefined') {
@@ -122,11 +123,25 @@ class SyncBridge {
   }
 
   pollLocalState() {
+    // 1. Poll State
     fetch('/api/state')
       .then(res => res.json())
       .then(data => {
         if (data && data.success && data.state) {
           this.handleRemoteStateUpdate(data.state);
+        }
+      })
+      .catch(() => {});
+
+    // 2. Poll Mystery Box Events
+    fetch('/api/box-event')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.success && data.event && data.event.id !== this.lastBoxEventId) {
+          this.lastBoxEventId = data.event.id;
+          if (data.event.payload) {
+            this.handleMessage(data.event.payload);
+          }
         }
       })
       .catch(() => {});
