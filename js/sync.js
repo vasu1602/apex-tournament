@@ -68,8 +68,9 @@ class SyncBridge {
     // 4. Connect to Global Cloud MQTT over WebSockets (for Vercel & Internet)
     this.initCloudMqtt();
 
-    // Trigger initial sync request after 500ms
-    setTimeout(() => this.requestSync(), 500);
+    // Trigger initial sync requests
+    setTimeout(() => this.requestSync(), 300);
+    setTimeout(() => this.requestSync(), 1200);
 
     window.syncBridge = this;
   }
@@ -328,7 +329,7 @@ class SyncBridge {
     if (data.type === 'SYNC_REQUEST') {
       const state = store.getState();
       const isAdmin = Boolean(state.currentUser && state.currentUser.isAuthenticated);
-      if (isAdmin || (state.racers && state.racers.length > 0) || (state.teams && state.teams.length > 0)) {
+      if (isAdmin || (state.racers && state.racers.length > 0) || (state.teams && state.teams.length > 0) || (state.tournamentMatchups && state.tournamentMatchups.length > 0)) {
         this.broadcastState(state);
       }
     } else if (data.type === 'STATE_SYNC' && data.payload && !this.isApplyingRemoteState) {

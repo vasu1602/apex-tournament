@@ -21,6 +21,7 @@ class TournamentBoxView {
     this.isCooldown = false;
     this.cooldownSeconds = 0;
     this.cooldownTimer = null;
+    this.localSelectedRoundId = null;
     this.boxState = 'idle'; // 'idle' | 'shaking' | 'open'
     this.emergingTeam = null;
 
@@ -58,11 +59,16 @@ class TournamentBoxView {
   }
 
   syncTeamsFromStore(forceReset = false) {
-    const { tournamentRounds = [{ id: 'round_qualifiers', name: 'Qualifiers', isLocked: false }], activeTournamentRoundId = 'round_qualifiers', tournamentMatchups = [] } = store.getState();
-    const activeRound = tournamentRounds.find((r) => r.id === activeTournamentRoundId) || tournamentRounds[0];
+    const { currentUser, tournamentRounds = [{ id: 'round_qualifiers', name: 'Qualifiers', isLocked: false }], activeTournamentRoundId = 'round_qualifiers', tournamentMatchups = [] } = store.getState();
+    const isAdmin = Boolean(currentUser && currentUser.isAuthenticated);
+    const activeRoundId = isAdmin 
+      ? (activeTournamentRoundId || tournamentRounds[0]?.id)
+      : (this.localSelectedRoundId && tournamentRounds.some(r => r.id === this.localSelectedRoundId) ? this.localSelectedRoundId : (activeTournamentRoundId || tournamentRounds[0]?.id));
+
+    const activeRound = tournamentRounds.find((r) => r.id === activeRoundId) || tournamentRounds[0];
     const allTeams = this.getAllAvailableTeams();
 
-    const currentRoundMatchups = tournamentMatchups.filter((m) => (m.roundId || tournamentRounds[0].id) === activeRound.id);
+    const currentRoundMatchups = tournamentMatchups.filter((m) => (m.roundId || tournamentRounds[0]?.id) === activeRound.id);
 
     const confirmedTeamIds = new Set();
     currentRoundMatchups.forEach((m) => {
@@ -336,7 +342,13 @@ class TournamentBoxView {
 
   // --- ROUND MANAGEMENT ACTIONS ---
   selectRound(roundId) {
-    store.setActiveTournamentRound(roundId);
+    const { currentUser } = store.getState();
+    const isAdmin = Boolean(currentUser && currentUser.isAuthenticated);
+    if (isAdmin) {
+      store.setActiveTournamentRound(roundId);
+    } else {
+      this.localSelectedRoundId = roundId;
+    }
     this.syncTeamsFromStore(false);
     this.renderTournamentView();
   }
@@ -562,8 +574,12 @@ class TournamentBoxView {
     const isAdmin = Boolean(currentUser && currentUser.isAuthenticated);
     const allTeams = this.getAllAvailableTeams();
 
-    const activeRound = tournamentRounds.find((r) => r.id === activeTournamentRoundId) || tournamentRounds[0];
-    const currentRoundMatchups = tournamentMatchups.filter((m) => (m.roundId || tournamentRounds[0].id) === activeRound.id);
+    const activeRoundId = isAdmin 
+      ? (activeTournamentRoundId || tournamentRounds[0]?.id)
+      : (this.localSelectedRoundId && tournamentRounds.some(r => r.id === this.localSelectedRoundId) ? this.localSelectedRoundId : (activeTournamentRoundId || tournamentRounds[0]?.id));
+
+    const activeRound = tournamentRounds.find((r) => r.id === activeRoundId) || tournamentRounds[0];
+    const currentRoundMatchups = tournamentMatchups.filter((m) => (m.roundId || tournamentRounds[0]?.id) === activeRound.id);
 
     const confirmedTeamIds = new Set();
     currentRoundMatchups.forEach((m) => {
