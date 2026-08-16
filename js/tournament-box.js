@@ -363,14 +363,9 @@ class TournamentBoxView {
       <!-- Tournament Header -->
       <div class="section-header" style="margin-bottom: 1.25rem;">
         <div class="section-title-wrap">
-          <span class="section-tag" style="color:var(--accent-cyan);">GRAND PRIX FACE-OFF</span>
-          <h2 class="section-title">${isAdmin ? 'Race Box Matchup Draw (Race Control)' : 'Live Tournament Matchups & Draw'}</h2>
+          <span class="section-tag" style="color:var(--accent-cyan);">FACE-OFF</span>
+          <h2 class="section-title">RACE MATCH-UP DRAW</h2>
         </div>
-        <p style="color:var(--text-secondary); font-size:0.85rem;">
-          ${isAdmin 
-            ? 'Admin Control: Click the mystery box to shake and draw random teams into 2-team head-to-head race fixtures.' 
-            : 'Live championship draw arena: Watch teams get drawn into head-to-head race fixtures in real time.'}
-        </p>
       </div>
 
       <!-- Main Tournament Grid -->
