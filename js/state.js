@@ -51,6 +51,10 @@ export const INITIAL_STATE = {
     status: 'idle'
   },
   auctionHistory: [],
+  tournamentRounds: [
+    { id: 'round_qualifiers', name: 'Qualifiers', isLocked: false }
+  ],
+  activeTournamentRoundId: 'round_qualifiers',
   tournamentMatchups: [],
   currentUser: {
     isAuthenticated: false,
@@ -858,19 +862,104 @@ class StateStore {
     }
   }
 
-  // --- TOURNAMENT MATCHUP SYSTEM ---
-  addTournamentMatchup(team1Id, team2Id) {
+  // --- TOURNAMENT ROUNDS & MATCHUP SYSTEM ---
+  addTournamentRound(name) {
+    if (!Array.isArray(this.state.tournamentRounds)) {
+      this.state.tournamentRounds = [];
+    }
+    const cleanName = (name && name.trim()) || `Round ${this.state.tournamentRounds.length + 1}`;
+    const newRound = {
+      id: 'round_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      name: cleanName,
+      isLocked: false,
+      createdAt: new Date().toISOString()
+    };
+    this.state.tournamentRounds.push(newRound);
+    this.state.activeTournamentRoundId = newRound.id;
+    this.saveState();
+    return { success: true, round: newRound };
+  }
+
+  updateTournamentRound(roundId, updates = {}) {
+    if (!Array.isArray(this.state.tournamentRounds)) return { success: false };
+    const round = this.state.tournamentRounds.find((r) => r.id === roundId);
+    if (!round) return { success: false, message: 'Round not found' };
+
+    if (typeof updates.name === 'string' && updates.name.trim()) {
+      round.name = updates.name.trim();
+    }
+    if (typeof updates.isLocked === 'boolean') {
+      round.isLocked = updates.isLocked;
+    }
+    this.saveState();
+    return { success: true, round };
+  }
+
+  toggleLockTournamentRound(roundId) {
+    if (!Array.isArray(this.state.tournamentRounds)) return { success: false };
+    const round = this.state.tournamentRounds.find((r) => r.id === roundId);
+    if (!round) return { success: false, message: 'Round not found' };
+    round.isLocked = !round.isLocked;
+    this.saveState();
+    return { success: true, isLocked: round.isLocked, round };
+  }
+
+  deleteTournamentRound(roundId) {
+    if (!Array.isArray(this.state.tournamentRounds)) return { success: false };
+    if (this.state.tournamentRounds.length <= 1) {
+      return { success: false, message: 'At least one round must remain.' };
+    }
+
+    this.state.tournamentRounds = this.state.tournamentRounds.filter((r) => r.id !== roundId);
+    // Remove matchups for this round
+    if (Array.isArray(this.state.tournamentMatchups)) {
+      this.state.tournamentMatchups = this.state.tournamentMatchups.filter((m) => m.roundId !== roundId);
+    }
+
+    if (this.state.activeTournamentRoundId === roundId) {
+      this.state.activeTournamentRoundId = this.state.tournamentRounds[0]?.id || null;
+    }
+    this.saveState();
+    return { success: true };
+  }
+
+  setActiveTournamentRound(roundId) {
+    if (!Array.isArray(this.state.tournamentRounds)) return;
+    const exists = this.state.tournamentRounds.some((r) => r.id === roundId);
+    if (exists) {
+      this.state.activeTournamentRoundId = roundId;
+      this.saveState();
+    }
+  }
+
+  addTournamentMatchup(team1Id, team2Id, roundId = null) {
     const team1 = this.state.teams.find((t) => t.id === team1Id);
     const team2 = this.state.teams.find((t) => t.id === team2Id);
     if (!team1 || !team2) return { success: false, message: 'Invalid team selections' };
+
+    if (!Array.isArray(this.state.tournamentRounds) || this.state.tournamentRounds.length === 0) {
+      this.state.tournamentRounds = [
+        { id: 'round_qualifiers', name: 'Qualifiers', isLocked: false }
+      ];
+    }
+
+    const targetRoundId = roundId || this.state.activeTournamentRoundId || this.state.tournamentRounds[0].id;
+    const targetRound = this.state.tournamentRounds.find((r) => r.id === targetRoundId) || this.state.tournamentRounds[0];
+
+    if (targetRound.isLocked) {
+      return { success: false, message: `The round "${targetRound.name}" is locked. Please unlock it or select another round.` };
+    }
 
     if (!Array.isArray(this.state.tournamentMatchups)) {
       this.state.tournamentMatchups = [];
     }
 
+    const roundMatchups = this.state.tournamentMatchups.filter((m) => (m.roundId || this.state.tournamentRounds[0].id) === targetRound.id);
+
     const newMatchup = {
       id: 'match_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-      matchNumber: this.state.tournamentMatchups.length + 1,
+      roundId: targetRound.id,
+      matchNumber: roundMatchups.length + 1,
       team1: { id: team1.id, name: team1.name, color: team1.color, logoUrl: team1.logoUrl, avatar: team1.avatar },
       team2: { id: team2.id, name: team2.name, color: team2.color, logoUrl: team2.logoUrl, avatar: team2.avatar },
       winnerId: null,
@@ -884,10 +973,16 @@ class StateStore {
 
   removeTournamentMatchup(matchupId) {
     if (!Array.isArray(this.state.tournamentMatchups)) return;
+    const match = this.state.tournamentMatchups.find((m) => m.id === matchupId);
+    const roundId = match ? match.roundId : null;
+
     this.state.tournamentMatchups = this.state.tournamentMatchups.filter((m) => m.id !== matchupId);
-    this.state.tournamentMatchups.forEach((m, idx) => {
-      m.matchNumber = idx + 1;
-    });
+    if (roundId) {
+      const roundMatches = this.state.tournamentMatchups.filter((m) => m.roundId === roundId);
+      roundMatches.forEach((m, idx) => {
+        m.matchNumber = idx + 1;
+      });
+    }
     this.saveState();
   }
 
@@ -900,8 +995,12 @@ class StateStore {
     }
   }
 
-  clearTournamentMatchups() {
-    this.state.tournamentMatchups = [];
+  clearTournamentMatchups(roundId = null) {
+    if (roundId) {
+      this.state.tournamentMatchups = (this.state.tournamentMatchups || []).filter((m) => (m.roundId || this.state.tournamentRounds[0]?.id) !== roundId);
+    } else {
+      this.state.tournamentMatchups = [];
+    }
     this.saveState();
   }
 }

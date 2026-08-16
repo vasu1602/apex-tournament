@@ -55,18 +55,21 @@ class TournamentBoxView {
   }
 
   syncTeamsFromStore(forceReset = false) {
-    const { tournamentMatchups = [] } = store.getState();
+    const { tournamentRounds = [{ id: 'round_qualifiers', name: 'Qualifiers', isLocked: false }], activeTournamentRoundId = 'round_qualifiers', tournamentMatchups = [] } = store.getState();
+    const activeRound = tournamentRounds.find((r) => r.id === activeTournamentRoundId) || tournamentRounds[0];
     const allTeams = this.getAllAvailableTeams();
 
+    const currentRoundMatchups = tournamentMatchups.filter((m) => (m.roundId || tournamentRounds[0].id) === activeRound.id);
+
     const confirmedTeamIds = new Set();
-    tournamentMatchups.forEach((m) => {
+    currentRoundMatchups.forEach((m) => {
       if (m.team1?.id) confirmedTeamIds.add(m.team1.id);
       if (m.team2?.id) confirmedTeamIds.add(m.team2.id);
     });
 
     const unMatchedTeams = allTeams.filter((t) => !confirmedTeamIds.has(t.id));
 
-    // Automatically clear pending slots if they are already confirmed in matchups
+    // Automatically clear pending slots if they are already confirmed in matchups of this round
     if (this.pendingTeam1 && confirmedTeamIds.has(this.pendingTeam1.id)) {
       this.pendingTeam1 = null;
     }
@@ -107,18 +110,24 @@ class TournamentBoxView {
 
   // --- MYSTERY BOX SHAKE & DRAW ACTION (ADMIN ONLY) ---
   triggerBoxDraw() {
-    const { currentUser } = store.getState();
+    const { currentUser, tournamentRounds = [{ id: 'round_qualifiers', name: 'Qualifiers', isLocked: false }], activeTournamentRoundId = 'round_qualifiers' } = store.getState();
     const isAdmin = Boolean(currentUser && currentUser.isAuthenticated);
+    const activeRound = tournamentRounds.find((r) => r.id === activeTournamentRoundId) || tournamentRounds[0];
 
     if (!isAdmin) {
       if (window.app) window.app.showToast('Box opening is controlled by the Race Control Admin.', 'info');
       return;
     }
 
+    if (activeRound.isLocked) {
+      if (window.app) window.app.showToast(`Round "${activeRound.name}" is locked. Unlock it or select another round.`, 'warning');
+      return;
+    }
+
     if (this.isDrawing) return;
 
     if (this.activeBoxTeams.length === 0) {
-      if (window.app) window.app.showToast('All teams have been drawn from the box! Click Refill Box below.', 'info');
+      if (window.app) window.app.showToast(`All teams have been drawn for ${activeRound.name}! Click Refill Box or create a new round.`, 'info');
       return;
     }
 
@@ -264,16 +273,17 @@ class TournamentBoxView {
   }
 
   confirmMatchup() {
-    const { currentUser } = store.getState();
+    const { currentUser, tournamentRounds = [{ id: 'round_qualifiers', name: 'Qualifiers', isLocked: false }], activeTournamentRoundId = 'round_qualifiers' } = store.getState();
     if (!currentUser?.isAuthenticated) return;
     if (!this.pendingTeam1 || !this.pendingTeam2) return;
 
+    const activeRound = tournamentRounds.find((r) => r.id === activeTournamentRoundId) || tournamentRounds[0];
     const team1 = this.pendingTeam1;
     const team2 = this.pendingTeam2;
 
-    const res = store.addTournamentMatchup(team1.id, team2.id);
+    const res = store.addTournamentMatchup(team1.id, team2.id, activeRound.id);
     if (res.success) {
-      if (window.app) window.app.showToast(`⚡ Match #${res.matchup.matchNumber}: ${team1.name} VS ${team2.name} locked & broadcasted!`, 'success');
+      if (window.app) window.app.showToast(`⚡ Match #${res.matchup.matchNumber} (${activeRound.name}): ${team1.name} VS ${team2.name} locked!`, 'success');
       
       // Auto-clear slots on all viewers and admin after brief celebration
       setTimeout(() => {
@@ -282,6 +292,8 @@ class TournamentBoxView {
         sync.broadcastBoxEvent({ action: 'CLEAR_SLOTS' });
         this.renderTournamentView();
       }, 1200);
+    } else if (window.app) {
+      window.app.showToast(res.message, 'warning');
     }
   }
 
@@ -293,6 +305,72 @@ class TournamentBoxView {
     sync.broadcastBoxEvent({ action: 'CLEAR_SLOTS' });
     this.syncTeamsFromStore(false);
     this.renderTournamentView();
+  }
+
+  // --- ROUND MANAGEMENT ACTIONS ---
+  selectRound(roundId) {
+    store.setActiveTournamentRound(roundId);
+    this.syncTeamsFromStore(false);
+    this.renderTournamentView();
+  }
+
+  promptAddRound() {
+    const { currentUser, tournamentRounds = [] } = store.getState();
+    if (!currentUser?.isAuthenticated) return;
+    const defaultName = tournamentRounds.length === 1 ? 'Eliminator Round' : (tournamentRounds.length === 2 ? 'Semi-Finals' : (tournamentRounds.length === 3 ? 'Grand Finals' : `Round ${tournamentRounds.length + 1}`));
+    const name = prompt('Enter name for the new tournament round (e.g. "Eliminator Round", "Semi-Finals", "Grand Finals"):', defaultName);
+    if (name && name.trim()) {
+      const res = store.addTournamentRound(name.trim());
+      if (res.success) {
+        this.syncTeamsFromStore(true);
+        this.renderTournamentView();
+        if (window.app) window.app.showToast(`New round created: ${res.round.name}`, 'success');
+      }
+    }
+  }
+
+  renameRound(roundId, newName) {
+    const { currentUser } = store.getState();
+    if (!currentUser?.isAuthenticated) return;
+    if (!newName || !newName.trim()) return;
+    store.updateTournamentRound(roundId, { name: newName.trim() });
+    this.renderTournamentView();
+  }
+
+  toggleRoundLock(roundId) {
+    const { currentUser } = store.getState();
+    if (!currentUser?.isAuthenticated) return;
+    const res = store.toggleLockTournamentRound(roundId);
+    if (res.success && window.app) {
+      window.app.showToast(res.isLocked ? `🔒 "${res.round.name}" locked` : `🔓 "${res.round.name}" unlocked`, res.isLocked ? 'sold' : 'info');
+    }
+    this.renderTournamentView();
+  }
+
+  deleteRound(roundId) {
+    const { currentUser } = store.getState();
+    if (!currentUser?.isAuthenticated) return;
+    if (confirm('Delete this round and all its matchups?')) {
+      const res = store.deleteTournamentRound(roundId);
+      if (res.success) {
+        this.syncTeamsFromStore(true);
+        this.renderTournamentView();
+        if (window.app) window.app.showToast('Round deleted', 'info');
+      } else if (window.app) {
+        window.app.showToast(res.message, 'warning');
+      }
+    }
+  }
+
+  clearCurrentRoundMatchups(roundId) {
+    const { currentUser } = store.getState();
+    if (!currentUser?.isAuthenticated) return;
+    if (confirm('Clear all matchups for this round?')) {
+      store.clearTournamentMatchups(roundId);
+      this.syncTeamsFromStore(true);
+      this.renderTournamentView();
+      if (window.app) window.app.showToast('Round matchups cleared', 'info');
+    }
   }
 
   // --- ADMIN BOX TEAM MANAGEMENT ---
@@ -447,12 +525,21 @@ class TournamentBoxView {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    const { currentUser, tournamentMatchups = [] } = store.getState();
+    const {
+      currentUser,
+      tournamentRounds = [{ id: 'round_qualifiers', name: 'Qualifiers', isLocked: false }],
+      activeTournamentRoundId = 'round_qualifiers',
+      tournamentMatchups = []
+    } = store.getState();
+
     const isAdmin = Boolean(currentUser && currentUser.isAuthenticated);
     const allTeams = this.getAllAvailableTeams();
 
+    const activeRound = tournamentRounds.find((r) => r.id === activeTournamentRoundId) || tournamentRounds[0];
+    const currentRoundMatchups = tournamentMatchups.filter((m) => (m.roundId || tournamentRounds[0].id) === activeRound.id);
+
     const confirmedTeamIds = new Set();
-    tournamentMatchups.forEach((m) => {
+    currentRoundMatchups.forEach((m) => {
       if (m.team1?.id) confirmedTeamIds.add(m.team1.id);
       if (m.team2?.id) confirmedTeamIds.add(m.team2.id);
     });
@@ -486,17 +573,17 @@ class TournamentBoxView {
           <!-- The 3D Interactive Mystery Vault Box -->
           <div class="vault-stage-wrapper">
             <div class="mystery-vault-box ${this.boxState === 'shaking' ? 'is-shaking' : ''} ${this.boxState === 'open' ? 'is-open' : ''} ${this.isDrawing ? 'is-busy' : ''}" 
-                 style="${!isAdmin ? 'cursor:default;' : ''}"
-                 onclick="window.tournamentBox.triggerBoxDraw()" 
-                 title="${isAdmin ? 'Click to Open the Box!' : 'Live Race Vault (Controlled by Race Admin)'}">
+                 style="${!isAdmin || activeRound.isLocked ? 'cursor:default;' : ''}"
+                 onclick="${activeRound.isLocked ? '' : 'window.tournamentBox.triggerBoxDraw()'}" 
+                 title="${isAdmin ? (activeRound.isLocked ? 'This round is locked' : 'Click to Open the Box!') : 'Live Race Vault (Controlled by Race Admin)'}">
               
               <!-- Lid -->
               <div class="vault-lid"></div>
 
               <!-- Base Chamber -->
               <div class="vault-base">
-                <div class="vault-core-emblem">🏎️</div>
-                <div class="vault-core-label">${isAdmin ? 'CLICK TO OPEN' : 'APEX VAULT'}</div>
+                <div class="vault-core-emblem">${activeRound.isLocked ? '🔒' : '🏎️'}</div>
+                <div class="vault-core-label">${isAdmin ? (activeRound.isLocked ? 'ROUND LOCKED' : 'CLICK TO OPEN') : 'APEX VAULT'}</div>
               </div>
 
               <!-- Emerging Holographic Team Card when Opening -->
@@ -517,22 +604,22 @@ class TournamentBoxView {
           <!-- Box Action Trigger / Spectator Status Indicator -->
           <div style="width:100%; display:flex; flex-direction:column; gap:0.6rem;">
             ${isAdmin ? `
-              <button class="btn btn-cyan btn-lg open-box-cta-btn" onclick="window.tournamentBox.triggerBoxDraw()" ${this.activeBoxTeams.length < 1 || this.isDrawing ? 'disabled' : ''}>
-                ${this.isDrawing ? (this.boxState === 'shaking' ? '⚡ SHAKING BOX...' : '✨ OPENING VAULT...') : (this.activeBoxTeams.length === 0 ? '🏁 BOX EMPTY' : '📦 CLICK BOX TO DRAW TEAM')}
+              <button class="btn btn-cyan btn-lg open-box-cta-btn" onclick="window.tournamentBox.triggerBoxDraw()" ${this.activeBoxTeams.length < 1 || this.isDrawing || activeRound.isLocked ? 'disabled' : ''} style="${activeRound.isLocked ? 'background:rgba(255,184,0,0.15); border-color:var(--accent-gold); color:var(--accent-gold); cursor:not-allowed;' : ''}">
+                ${activeRound.isLocked ? `🔒 ${activeRound.name.toUpperCase()} LOCKED` : (this.isDrawing ? (this.boxState === 'shaking' ? '⚡ SHAKING BOX...' : '✨ OPENING VAULT...') : (this.activeBoxTeams.length === 0 ? '🏁 BOX EMPTY' : '📦 CLICK BOX TO DRAW TEAM'))}
               </button>
 
               <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
                 <span style="font-size:0.78rem; color:var(--text-muted);">
-                  ${!this.pendingTeam1 ? '👉 Open box to draw Crew 1' : (!this.pendingTeam2 ? '👉 Open box again to draw Crew 2' : '✅ Matchup formed!')}
+                  ${activeRound.isLocked ? '🔒 Unlock this round to draw matches' : (!this.pendingTeam1 ? '👉 Open box to draw Crew 1' : (!this.pendingTeam2 ? '👉 Open box again to draw Crew 2' : '✅ Matchup formed!'))}
                 </span>
-                <button class="btn btn-outline btn-sm" onclick="window.tournamentBox.resetBoxPool()" title="Refill box with all un-matched teams" ${this.isDrawing ? 'disabled' : ''}>
+                <button class="btn btn-outline btn-sm" onclick="window.tournamentBox.resetBoxPool()" title="Refill box with all un-matched teams for this round" ${this.isDrawing || activeRound.isLocked ? 'disabled' : ''}>
                   🔄 Refill Box
                 </button>
               </div>
             ` : `
               <div class="spectator-vault-indicator">
-                <span class="spectator-pulse-dot"></span>
-                <span>${this.isDrawing ? '⚡ VAULT OPENING IN PROGRESS...' : 'LIVE TOURNAMENT ARENA'}</span>
+                <span class="spectator-pulse-dot" style="${activeRound.isLocked ? 'background:var(--accent-gold); box-shadow:0 0 10px var(--accent-gold);' : ''}"></span>
+                <span>${this.isDrawing ? '⚡ VAULT OPENING IN PROGRESS...' : (activeRound.isLocked ? `🔒 ${activeRound.name.toUpperCase()} • ROUND LOCKED` : 'LIVE TOURNAMENT ARENA')}</span>
               </div>
             `}
           </div>
@@ -626,7 +713,7 @@ class TournamentBoxView {
             ${isAdmin ? `
               <div style="display:flex; justify-content:space-between; align-items:center; margin-top:1rem; gap:0.5rem; flex-wrap:wrap;">
                 <div style="font-size:0.78rem; color:var(--text-muted);">
-                  ${!this.pendingTeam1 ? 'Click box on left to draw first crew' : (!this.pendingTeam2 ? 'Click box again to draw opposing crew' : '✅ Matchup locked & broadcasted!')}
+                  ${activeRound.isLocked ? '🔒 Round is locked' : (!this.pendingTeam1 ? 'Click box on left to draw first crew' : (!this.pendingTeam2 ? 'Click box again to draw opposing crew' : '✅ Matchup locked & broadcasted!'))}
                 </div>
                 <div style="display:flex; gap:0.5rem;">
                   ${this.pendingTeam1 || this.pendingTeam2 ? `
@@ -634,7 +721,7 @@ class TournamentBoxView {
                       Clear Selection
                     </button>
                   ` : ''}
-                  ${this.pendingTeam1 && this.pendingTeam2 ? `
+                  ${this.pendingTeam1 && this.pendingTeam2 && !activeRound.isLocked ? `
                     <button class="btn btn-cyan btn-sm" onclick="window.tournamentBox.confirmMatchup()">
                       ⚡ Lock Matchup
                     </button>
@@ -646,29 +733,92 @@ class TournamentBoxView {
 
           <!-- SAVED OFFICIAL TOURNAMENT FIXTURES (LIVE VIEW FOR EVERYONE) -->
           <div class="glass-card matchups-board-card">
-            <div class="section-header" style="margin-bottom:0.75rem;">
-              <div class="section-title-wrap">
-                <span class="section-tag" style="font-size:0.7rem; color:var(--accent-gold);">OFFICIAL FIXTURES</span>
-                <h3 style="font-family:var(--font-display); font-size:1.1rem; color:#fff; text-transform:uppercase;">
-                  Championship Matchups (${tournamentMatchups.length})
-                </h3>
-              </div>
-              ${isAdmin && tournamentMatchups.length > 0 ? `
-                <button class="btn btn-danger btn-sm" style="font-size:0.7rem; padding:0.3rem 0.6rem;" onclick="window.tournamentBox.clearAllMatchups()">
-                  🗑️ Clear All
+            
+            <!-- Tournament Rounds Navigation / Switcher Pills Bar -->
+            <div class="tournament-rounds-pills-bar">
+              ${tournamentRounds.map((r) => {
+                const count = tournamentMatchups.filter((m) => (m.roundId || tournamentRounds[0].id) === r.id).length;
+                const isSelected = r.id === activeRound.id;
+                return `
+                  <button class="round-pill-tab ${isSelected ? 'active' : ''} ${r.isLocked ? 'locked-round' : ''}" 
+                          onclick="window.tournamentBox.selectRound('${r.id}')"
+                          title="${r.name} (${count} matches)">
+                    ${r.isLocked ? '🔒 ' : ''}${r.name} (${count})
+                  </button>
+                `;
+              }).join('')}
+
+              ${isAdmin ? `
+                <button class="round-pill-tab-add" onclick="window.tournamentBox.promptAddRound()" title="Add a new tournament round">
+                  + Add Round
                 </button>
               ` : ''}
             </div>
 
-            ${tournamentMatchups.length === 0 ? `
+            <!-- Active Round Section Header -->
+            <div class="section-header" style="margin-bottom:0.85rem; flex-wrap:wrap; gap:0.5rem;">
+              <div class="section-title-wrap" style="align-items:center; gap:0.6rem; flex-wrap:wrap;">
+                <span class="section-tag" style="font-size:0.7rem; color:var(--accent-gold);">OFFICIAL FIXTURES</span>
+                
+                ${isAdmin ? `
+                  <div style="display:flex; align-items:center; gap:0.4rem;">
+                    <input type="text" class="round-name-inline-input" value="${activeRound.name}" 
+                           onchange="window.tournamentBox.renameRound('${activeRound.id}', this.value)" 
+                           title="Click to rename round">
+                    <span style="font-family:var(--font-display); font-size:1.1rem; color:var(--text-muted); font-weight:800;">
+                      (${currentRoundMatchups.length})
+                    </span>
+                  </div>
+                ` : `
+                  <h3 style="font-family:var(--font-display); font-size:1.1rem; color:#fff; text-transform:uppercase;">
+                    ${activeRound.name} (${currentRoundMatchups.length})
+                  </h3>
+                `}
+
+                ${activeRound.isLocked ? `
+                  <span class="round-locked-banner">🔒 LOCKED</span>
+                ` : ''}
+              </div>
+
+              <!-- Admin Controls for Round -->
+              ${isAdmin ? `
+                <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap;">
+                  <button class="btn btn-sm ${activeRound.isLocked ? 'btn-gold' : 'btn-outline'}" 
+                          style="font-size:0.75rem; padding:0.3rem 0.65rem;"
+                          onclick="window.tournamentBox.toggleRoundLock('${activeRound.id}')"
+                          title="${activeRound.isLocked ? 'Click to Unlock Round' : 'Click to Lock Round'}">
+                    ${activeRound.isLocked ? '🔒 Locked' : '🔓 Lock Round'}
+                  </button>
+                  
+                  ${currentRoundMatchups.length > 0 ? `
+                    <button class="btn btn-danger btn-sm" style="font-size:0.72rem; padding:0.3rem 0.6rem;" 
+                            onclick="window.tournamentBox.clearCurrentRoundMatchups('${activeRound.id}')" 
+                            title="Clear matches for this round">
+                      🗑️ Clear
+                    </button>
+                  ` : ''}
+
+                  ${tournamentRounds.length > 1 ? `
+                    <button class="btn btn-outline btn-sm" style="font-size:0.75rem; padding:0.3rem 0.55rem; color:var(--text-muted);" 
+                            onclick="window.tournamentBox.deleteRound('${activeRound.id}')" 
+                            title="Delete this round">
+                      ✕
+                    </button>
+                  ` : ''}
+                </div>
+              ` : ''}
+            </div>
+
+            <!-- Fixtures List for Active Round -->
+            ${currentRoundMatchups.length === 0 ? `
               <div style="text-align:center; padding:2rem 1rem; color:var(--text-muted); font-size:0.85rem; border:1px dashed var(--border-subtle); border-radius:var(--radius-md);">
                 <div style="font-size:1.8rem; margin-bottom:0.3rem;">🏁</div>
-                No face-off matchups created yet.<br>
-                ${isAdmin ? 'Open the box on the left to draw teams and create 2-team race fixtures.' : 'Waiting for Race Control Admin to draw match fixtures.'}
+                No face-off matchups created yet for <strong>${activeRound.name}</strong>.<br>
+                ${isAdmin ? (activeRound.isLocked ? 'This round is locked. Unlock it to draw matchups.' : 'Open the box on the left to draw teams and create 2-team race fixtures.') : 'Waiting for Race Control Admin to draw match fixtures.'}
               </div>
             ` : `
               <div class="matchups-fixtures-list">
-                ${tournamentMatchups.map((m) => `
+                ${currentRoundMatchups.map((m) => `
                   <div class="matchup-fixture-row ${m.winnerId ? 'has-winner' : ''}">
                     <div class="fixture-number-badge">
                       MATCH #${m.matchNumber}
