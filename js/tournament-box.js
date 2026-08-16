@@ -96,12 +96,20 @@ class TournamentBoxView {
     return false;
   }
 
-  // --- MYSTERY BOX SHAKE & DRAW ACTION ---
+  // --- MYSTERY BOX SHAKE & DRAW ACTION (ADMIN ONLY) ---
   triggerBoxDraw() {
+    const { currentUser } = store.getState();
+    const isAdmin = Boolean(currentUser && currentUser.isAuthenticated);
+
+    if (!isAdmin) {
+      if (window.app) window.app.showToast('Box opening is controlled by the Race Control Admin.', 'info');
+      return;
+    }
+
     if (this.isDrawing) return;
 
     if (this.activeBoxTeams.length === 0) {
-      if (window.app) window.app.showToast('All teams have been drawn from the box! Click Reset Box to refill.', 'info');
+      if (window.app) window.app.showToast('All teams have been drawn from the box! Click Refill Box below.', 'info');
       return;
     }
 
@@ -164,6 +172,8 @@ class TournamentBoxView {
   }
 
   confirmMatchup() {
+    const { currentUser } = store.getState();
+    if (!currentUser?.isAuthenticated) return;
     if (!this.pendingTeam1 || !this.pendingTeam2) return;
 
     const team1Id = this.pendingTeam1.id;
@@ -179,6 +189,8 @@ class TournamentBoxView {
   }
 
   clearSlots() {
+    const { currentUser } = store.getState();
+    if (!currentUser?.isAuthenticated) return;
     this.pendingTeam1 = null;
     this.pendingTeam2 = null;
     this.syncTeamsFromStore(false);
@@ -187,6 +199,9 @@ class TournamentBoxView {
 
   // --- ADMIN BOX TEAM MANAGEMENT ---
   submitAddTeam() {
+    const { currentUser } = store.getState();
+    if (!currentUser?.isAuthenticated) return;
+
     const nameInput = document.getElementById('box-team-input-name');
     const colorInput = document.getElementById('box-team-input-color');
     if (!nameInput) return;
@@ -203,6 +218,9 @@ class TournamentBoxView {
   }
 
   addTeamToBox(name, customColor) {
+    const { currentUser } = store.getState();
+    if (!currentUser?.isAuthenticated) return;
+
     const cleanName = name.trim();
     if (this.activeBoxTeams.some((t) => t.name.toLowerCase() === cleanName.toLowerCase())) {
       if (window.app) window.app.showToast(`Team "${cleanName}" is already inside the box!`, 'warning');
@@ -234,7 +252,10 @@ class TournamentBoxView {
   }
 
   removeTeamFromBox(teamId) {
+    const { currentUser } = store.getState();
+    if (!currentUser?.isAuthenticated) return;
     if (this.isDrawing) return;
+
     const target = this.activeBoxTeams.find((t) => t.id === teamId);
     this.activeBoxTeams = this.activeBoxTeams.filter((t) => t.id !== teamId);
     if (target && window.app) window.app.showToast(`Removed "${target.name}" from box`, 'info');
@@ -242,7 +263,10 @@ class TournamentBoxView {
   }
 
   deleteTeamPermanently(teamId) {
+    const { currentUser } = store.getState();
+    if (!currentUser?.isAuthenticated) return;
     if (this.isDrawing) return;
+
     const allTeams = this.getAllAvailableTeams();
     const target = allTeams.find((t) => t.id === teamId);
     const targetName = target ? target.name : 'Team';
@@ -256,7 +280,10 @@ class TournamentBoxView {
   }
 
   toggleTeamInBox(teamId) {
+    const { currentUser } = store.getState();
+    if (!currentUser?.isAuthenticated) return;
     if (this.isDrawing) return;
+
     const exists = this.activeBoxTeams.some((t) => t.id === teamId);
     if (exists) {
       this.removeTeamFromBox(teamId);
@@ -278,7 +305,10 @@ class TournamentBoxView {
   }
 
   resetBoxPool() {
+    const { currentUser } = store.getState();
+    if (!currentUser?.isAuthenticated) return;
     if (this.isDrawing) return;
+
     this.syncTeamsFromStore(true);
     this.pendingTeam1 = null;
     this.pendingTeam2 = null;
@@ -287,6 +317,9 @@ class TournamentBoxView {
   }
 
   deleteMatchup(matchupId) {
+    const { currentUser } = store.getState();
+    if (!currentUser?.isAuthenticated) return;
+
     store.removeTournamentMatchup(matchupId);
     if (window.app) window.app.showToast('Matchup removed', 'info');
     this.syncTeamsFromStore(false);
@@ -301,6 +334,9 @@ class TournamentBoxView {
   }
 
   clearAllMatchups() {
+    const { currentUser } = store.getState();
+    if (!currentUser?.isAuthenticated) return;
+
     if (confirm('Clear all tournament face-off fixtures?')) {
       store.clearTournamentMatchups();
       if (window.app) window.app.showToast('All matchups cleared', 'info');
@@ -328,10 +364,12 @@ class TournamentBoxView {
       <div class="section-header" style="margin-bottom: 1.25rem;">
         <div class="section-title-wrap">
           <span class="section-tag" style="color:var(--accent-cyan);">GRAND PRIX FACE-OFF</span>
-          <h2 class="section-title">Race Box Matchup Draw</h2>
+          <h2 class="section-title">${isAdmin ? 'Race Box Matchup Draw (Race Control)' : 'Live Tournament Matchups & Draw'}</h2>
         </div>
         <p style="color:var(--text-secondary); font-size:0.85rem;">
-          Click the mystery box to shake and draw random teams into head-to-head 2-team race fixtures.
+          ${isAdmin 
+            ? 'Admin Control: Click the mystery box to shake and draw random teams into 2-team head-to-head race fixtures.' 
+            : 'Live championship draw arena: Watch teams get drawn into head-to-head race fixtures in real time.'}
         </p>
       </div>
 
@@ -344,17 +382,20 @@ class TournamentBoxView {
             <div>
               <span class="section-tag" style="font-size:0.7rem; color:var(--accent-gold);">RACE VAULT</span>
               <h3 style="font-family:var(--font-display); font-size:1.15rem; color:#fff; text-transform:uppercase;">
-                Mystery Team Box
+                ${isAdmin ? 'Mystery Team Box' : 'Live Race Vault'}
               </h3>
             </div>
             <div class="box-team-counter-badge">
-              <span>📦</span> ${this.activeBoxTeams.length} Teams Inside Box
+              <span>📦</span> ${this.activeBoxTeams.length} Teams In Vault
             </div>
           </div>
 
           <!-- The 3D Interactive Mystery Vault Box -->
           <div class="vault-stage-wrapper">
-            <div class="mystery-vault-box ${this.boxState === 'shaking' ? 'is-shaking' : ''} ${this.boxState === 'open' ? 'is-open' : ''} ${this.isDrawing ? 'is-busy' : ''}" onclick="window.tournamentBox.triggerBoxDraw()" title="Click to Open the Box!">
+            <div class="mystery-vault-box ${this.boxState === 'shaking' ? 'is-shaking' : ''} ${this.boxState === 'open' ? 'is-open' : ''} ${this.isDrawing ? 'is-busy' : ''}" 
+                 style="${!isAdmin ? 'cursor:default;' : ''}"
+                 onclick="window.tournamentBox.triggerBoxDraw()" 
+                 title="${isAdmin ? 'Click to Open the Box!' : 'Live Race Vault (Controlled by Race Admin)'}">
               
               <!-- Lid -->
               <div class="vault-lid"></div>
@@ -362,7 +403,7 @@ class TournamentBoxView {
               <!-- Base Chamber -->
               <div class="vault-base">
                 <div class="vault-core-emblem">🏎️</div>
-                <div class="vault-core-label">CLICK TO OPEN</div>
+                <div class="vault-core-label">${isAdmin ? 'CLICK TO OPEN' : 'APEX VAULT'}</div>
               </div>
 
               <!-- Emerging Holographic Team Card when Opening -->
@@ -380,82 +421,91 @@ class TournamentBoxView {
             <div class="vault-shadow"></div>
           </div>
 
-          <!-- Box Action Trigger -->
+          <!-- Box Action Trigger / Spectator Status Indicator -->
           <div style="width:100%; display:flex; flex-direction:column; gap:0.6rem;">
-            <button class="btn btn-cyan btn-lg open-box-cta-btn" onclick="window.tournamentBox.triggerBoxDraw()" ${this.activeBoxTeams.length < 1 || this.isDrawing ? 'disabled' : ''}>
-              ${this.isDrawing ? (this.boxState === 'shaking' ? '⚡ SHAKING BOX...' : '✨ OPENING VAULT...') : (this.activeBoxTeams.length === 0 ? '🏁 BOX EMPTY' : '📦 CLICK BOX TO DRAW TEAM')}
-            </button>
-
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
-              <span style="font-size:0.78rem; color:var(--text-muted);">
-                ${!this.pendingTeam1 ? '👉 Open box to draw Crew 1' : (!this.pendingTeam2 ? '👉 Open box again to draw Crew 2' : '✅ Matchup formed!')}
-              </span>
-              <button class="btn btn-outline btn-sm" onclick="window.tournamentBox.resetBoxPool()" title="Refill box with all un-matched teams" ${this.isDrawing ? 'disabled' : ''}>
-                🔄 Refill Box
+            ${isAdmin ? `
+              <button class="btn btn-cyan btn-lg open-box-cta-btn" onclick="window.tournamentBox.triggerBoxDraw()" ${this.activeBoxTeams.length < 1 || this.isDrawing ? 'disabled' : ''}>
+                ${this.isDrawing ? (this.boxState === 'shaking' ? '⚡ SHAKING BOX...' : '✨ OPENING VAULT...') : (this.activeBoxTeams.length === 0 ? '🏁 BOX EMPTY' : '📦 CLICK BOX TO DRAW TEAM')}
               </button>
-            </div>
-          </div>
 
-          <!-- ADMIN BOX TEAM MANAGER (ADD / DELETE TEAMS FROM THE BOX) -->
-          <div class="box-teams-manager-card">
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-subtle); padding-bottom:0.5rem;">
-              <span style="font-family:var(--font-display); font-size:0.95rem; font-weight:800; color:#fff; text-transform:uppercase; letter-spacing:0.5px;">
-                📦 Teams in Box (${this.activeBoxTeams.length}/${allTeams.length})
-              </span>
-            </div>
-
-            <!-- Add Team Form -->
-            <div style="display:flex; flex-direction:column; gap:0.35rem;">
-              <span style="font-size:0.75rem; color:var(--text-secondary); font-weight:700;">➕ ADD TEAM TO BOX:</span>
-              <div class="box-quick-add-row">
-                <input type="color" id="box-team-input-color" value="#00e5ff" style="width:38px; height:36px; padding:2px; background:transparent; border:1px solid var(--border-subtle); border-radius:var(--radius-sm); cursor:pointer;" title="Choose Team Color">
-                <input type="text" id="box-team-input-name" class="box-quick-input" placeholder="Type team name & hit Enter..." onkeydown="if(event.key==='Enter') window.tournamentBox.submitAddTeam()">
-                <button class="btn btn-cyan btn-sm" style="white-space:nowrap; padding:0.45rem 0.95rem; font-weight:800;" onclick="window.tournamentBox.submitAddTeam()">
-                  + Add to Box
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                <span style="font-size:0.78rem; color:var(--text-muted);">
+                  ${!this.pendingTeam1 ? '👉 Open box to draw Crew 1' : (!this.pendingTeam2 ? '👉 Open box again to draw Crew 2' : '✅ Matchup formed!')}
+                </span>
+                <button class="btn btn-outline btn-sm" onclick="window.tournamentBox.resetBoxPool()" title="Refill box with all un-matched teams" ${this.isDrawing ? 'disabled' : ''}>
+                  🔄 Refill Box
                 </button>
               </div>
-            </div>
-
-            <!-- Roster List of Teams with Direct Toggle & Delete -->
-            <div style="display:flex; flex-direction:column; gap:0.45rem; max-height:220px; overflow-y:auto; padding-right:0.3rem; margin-top:0.3rem;">
-              ${allTeams.map((t) => {
-                const isInBox = this.activeBoxTeams.some((bt) => bt.id === t.id);
-                const isPaired = confirmedTeamIds.has(t.id);
-                return `
-                  <div style="display:flex; align-items:center; justify-content:space-between; gap:0.6rem; background:rgba(16,22,35,0.9); border:1px solid ${isInBox ? 'rgba(0, 229, 255, 0.4)' : 'var(--border-subtle)'}; border-left:4px solid ${t.color || '#00e5ff'}; border-radius:var(--radius-sm); padding:0.45rem 0.75rem;">
-                    
-                    <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; flex:1; margin:0; user-select:none;">
-                      <input type="checkbox" ${isInBox ? 'checked' : ''} ${isPaired ? 'disabled' : ''} onchange="window.tournamentBox.toggleTeamInBox('${t.id}')" style="width:16px; height:16px; accent-color:var(--accent-cyan); cursor:pointer;">
-                      <span style="font-family:var(--font-display); font-size:0.92rem; font-weight:800; color:${isInBox ? '#ffffff' : 'var(--text-muted)'};">
-                        ${t.name}
-                      </span>
-                    </label>
-
-                    <div style="display:flex; align-items:center; gap:0.5rem;">
-                      ${isPaired ? `
-                        <span style="font-size:0.68rem; color:var(--accent-gold); background:rgba(255,184,0,0.15); padding:0.15rem 0.45rem; border-radius:var(--radius-pill); font-weight:800;">
-                          PAIRED
-                        </span>
-                      ` : (isInBox ? `
-                        <span style="font-size:0.68rem; color:var(--accent-cyan); background:rgba(0,229,255,0.12); padding:0.15rem 0.45rem; border-radius:var(--radius-pill); font-weight:800;">
-                          IN BOX
-                        </span>
-                      ` : `
-                        <span style="font-size:0.68rem; color:var(--text-muted); background:rgba(255,255,255,0.05); padding:0.15rem 0.45rem; border-radius:var(--radius-pill); font-weight:700;">
-                          EXCLUDED
-                        </span>
-                      `)}
-
-                      <button class="btn-icon" style="color:var(--text-muted); width:26px; height:26px; font-size:0.78rem;" onclick="window.tournamentBox.deleteTeamPermanently('${t.id}')" title="Delete ${t.name}">
-                        🗑️
-                      </button>
-                    </div>
-
-                  </div>
-                `;
-              }).join('')}
-            </div>
+            ` : `
+              <div class="spectator-vault-indicator">
+                <span class="spectator-pulse-dot"></span>
+                <span>${this.isDrawing ? '⚡ VAULT OPENING IN PROGRESS...' : 'LIVE TOURNAMENT ARENA • RACE CONTROL'}</span>
+              </div>
+            `}
           </div>
+
+          <!-- ADMIN ONLY: BOX TEAM MANAGER (ADD / DELETE TEAMS FROM THE BOX) -->
+          ${isAdmin ? `
+            <div class="box-teams-manager-card">
+              <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-subtle); padding-bottom:0.5rem;">
+                <span style="font-family:var(--font-display); font-size:0.95rem; font-weight:800; color:#fff; text-transform:uppercase; letter-spacing:0.5px;">
+                  📦 Teams in Box (${this.activeBoxTeams.length}/${allTeams.length})
+                </span>
+              </div>
+
+              <!-- Add Team Form -->
+              <div style="display:flex; flex-direction:column; gap:0.35rem;">
+                <span style="font-size:0.75rem; color:var(--text-secondary); font-weight:700;">➕ ADD TEAM TO BOX:</span>
+                <div class="box-quick-add-row">
+                  <input type="color" id="box-team-input-color" value="#00e5ff" style="width:38px; height:36px; padding:2px; background:transparent; border:1px solid var(--border-subtle); border-radius:var(--radius-sm); cursor:pointer;" title="Choose Team Color">
+                  <input type="text" id="box-team-input-name" class="box-quick-input" placeholder="Type team name & hit Enter..." onkeydown="if(event.key==='Enter') window.tournamentBox.submitAddTeam()">
+                  <button class="btn btn-cyan btn-sm" style="white-space:nowrap; padding:0.45rem 0.95rem; font-weight:800;" onclick="window.tournamentBox.submitAddTeam()">
+                    + Add to Box
+                  </button>
+                </div>
+              </div>
+
+              <!-- Roster List of Teams with Direct Toggle & Delete -->
+              <div style="display:flex; flex-direction:column; gap:0.45rem; max-height:220px; overflow-y:auto; padding-right:0.3rem; margin-top:0.3rem;">
+                ${allTeams.map((t) => {
+                  const isInBox = this.activeBoxTeams.some((bt) => bt.id === t.id);
+                  const isPaired = confirmedTeamIds.has(t.id);
+                  return `
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:0.6rem; background:rgba(16,22,35,0.9); border:1px solid ${isInBox ? 'rgba(0, 229, 255, 0.4)' : 'var(--border-subtle)'}; border-left:4px solid ${t.color || '#00e5ff'}; border-radius:var(--radius-sm); padding:0.45rem 0.75rem;">
+                      
+                      <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; flex:1; margin:0; user-select:none;">
+                        <input type="checkbox" ${isInBox ? 'checked' : ''} ${isPaired ? 'disabled' : ''} onchange="window.tournamentBox.toggleTeamInBox('${t.id}')" style="width:16px; height:16px; accent-color:var(--accent-cyan); cursor:pointer;">
+                        <span style="font-family:var(--font-display); font-size:0.92rem; font-weight:800; color:${isInBox ? '#ffffff' : 'var(--text-muted)'};">
+                          ${t.name}
+                        </span>
+                      </label>
+
+                      <div style="display:flex; align-items:center; gap:0.5rem;">
+                        ${isPaired ? `
+                          <span style="font-size:0.68rem; color:var(--accent-gold); background:rgba(255,184,0,0.15); padding:0.15rem 0.45rem; border-radius:var(--radius-pill); font-weight:800;">
+                            PAIRED
+                          </span>
+                        ` : (isInBox ? `
+                          <span style="font-size:0.68rem; color:var(--accent-cyan); background:rgba(0,229,255,0.12); padding:0.15rem 0.45rem; border-radius:var(--radius-pill); font-weight:800;">
+                            IN BOX
+                          </span>
+                        ` : `
+                          <span style="font-size:0.68rem; color:var(--text-muted); background:rgba(255,255,255,0.05); padding:0.15rem 0.45rem; border-radius:var(--radius-pill); font-weight:700;">
+                            EXCLUDED
+                          </span>
+                        `)}
+
+                        <button class="btn-icon" style="color:var(--text-muted); width:26px; height:26px; font-size:0.78rem;" onclick="window.tournamentBox.deleteTeamPermanently('${t.id}')" title="Delete ${t.name}">
+                          🗑️
+                        </button>
+                      </div>
+
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          ` : ''}
 
         </div>
 
@@ -486,7 +536,7 @@ class TournamentBoxView {
                 ` : `
                   <div class="slot-placeholder">
                     <span style="font-size:1.6rem; opacity:0.6;">📦</span>
-                    <span>1st Box Open &rarr; Fits Here</span>
+                    <span>${isAdmin ? '1st Box Open → Fits Here' : 'Waiting for Crew 1 Draw'}</span>
                   </div>
                 `}
               </div>
@@ -507,33 +557,39 @@ class TournamentBoxView {
                 ` : `
                   <div class="slot-placeholder">
                     <span style="font-size:1.6rem; opacity:0.6;">📦</span>
-                    <span>2nd Box Open &rarr; Fits Here</span>
+                    <span>${isAdmin ? '2nd Box Open → Fits Here' : 'Waiting for Crew 2 Draw'}</span>
                   </div>
                 `}
               </div>
             </div>
 
-            <!-- Action Buttons -->
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:1rem; gap:0.5rem; flex-wrap:wrap;">
-              <div style="font-size:0.78rem; color:var(--text-muted);">
-                ${!this.pendingTeam1 ? 'Click box on left to draw first crew' : (!this.pendingTeam2 ? 'Click box again to draw opposing crew' : '✅ Matchup locked & broadcasted!')}
+            <!-- Action Buttons (Admin Only) -->
+            ${isAdmin ? `
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:1rem; gap:0.5rem; flex-wrap:wrap;">
+                <div style="font-size:0.78rem; color:var(--text-muted);">
+                  ${!this.pendingTeam1 ? 'Click box on left to draw first crew' : (!this.pendingTeam2 ? 'Click box again to draw opposing crew' : '✅ Matchup locked & broadcasted!')}
+                </div>
+                <div style="display:flex; gap:0.5rem;">
+                  ${this.pendingTeam1 || this.pendingTeam2 ? `
+                    <button class="btn btn-outline btn-sm" onclick="window.tournamentBox.clearSlots()">
+                      Clear Selection
+                    </button>
+                  ` : ''}
+                  ${this.pendingTeam1 && this.pendingTeam2 ? `
+                    <button class="btn btn-cyan btn-sm" onclick="window.tournamentBox.confirmMatchup()">
+                      ⚡ Lock Matchup
+                    </button>
+                  ` : ''}
+                </div>
               </div>
-              <div style="display:flex; gap:0.5rem;">
-                ${this.pendingTeam1 || this.pendingTeam2 ? `
-                  <button class="btn btn-outline btn-sm" onclick="window.tournamentBox.clearSlots()">
-                    Clear Selection
-                  </button>
-                ` : ''}
-                ${this.pendingTeam1 && this.pendingTeam2 ? `
-                  <button class="btn btn-cyan btn-sm" onclick="window.tournamentBox.confirmMatchup()">
-                    ⚡ Lock Matchup
-                  </button>
-                ` : ''}
+            ` : `
+              <div style="text-align:center; font-size:0.78rem; color:var(--text-muted); margin-top:0.6rem;">
+                ${this.pendingTeam1 && !this.pendingTeam2 ? '🏎️ Crew 1 selected! Awaiting Crew 2 draw...' : (this.pendingTeam1 && this.pendingTeam2 ? '✅ Matchup locked and added to official fixtures!' : '📡 Live draw updates appear automatically as Race Admin draws teams')}
               </div>
-            </div>
+            `}
           </div>
 
-          <!-- SAVED OFFICIAL TOURNAMENT FIXTURES (LIVE VIEW FOR VIEWERS) -->
+          <!-- SAVED OFFICIAL TOURNAMENT FIXTURES (LIVE VIEW FOR EVERYONE) -->
           <div class="glass-card matchups-board-card">
             <div class="section-header" style="margin-bottom:0.75rem;">
               <div class="section-title-wrap">
@@ -542,7 +598,7 @@ class TournamentBoxView {
                   Championship Matchups (${tournamentMatchups.length})
                 </h3>
               </div>
-              ${tournamentMatchups.length > 0 ? `
+              ${isAdmin && tournamentMatchups.length > 0 ? `
                 <button class="btn btn-danger btn-sm" style="font-size:0.7rem; padding:0.3rem 0.6rem;" onclick="window.tournamentBox.clearAllMatchups()">
                   🗑️ Clear All
                 </button>
@@ -553,7 +609,7 @@ class TournamentBoxView {
               <div style="text-align:center; padding:2rem 1rem; color:var(--text-muted); font-size:0.85rem; border:1px dashed var(--border-subtle); border-radius:var(--radius-md);">
                 <div style="font-size:1.8rem; margin-bottom:0.3rem;">🏁</div>
                 No face-off matchups created yet.<br>
-                Open the box on the left to draw teams and create 2-team race fixtures.
+                ${isAdmin ? 'Open the box on the left to draw teams and create 2-team race fixtures.' : 'Waiting for Race Control Admin to draw match fixtures.'}
               </div>
             ` : `
               <div class="matchups-fixtures-list">
@@ -565,7 +621,10 @@ class TournamentBoxView {
 
                     <div class="fixture-teams-versus">
                       <!-- Team 1 -->
-                      <div class="fixture-team-pill ${m.winnerId === m.team1.id ? 'is-winner' : (m.winnerId && m.winnerId !== m.team1.id ? 'is-eliminated' : '')}" style="border-left: 3px solid ${m.team1.color}; cursor:pointer;" onclick="window.tournamentBox.toggleWinner('${m.id}', '${m.team1.id}')" title="Click to mark as winner">
+                      <div class="fixture-team-pill ${m.winnerId === m.team1.id ? 'is-winner' : (m.winnerId && m.winnerId !== m.team1.id ? 'is-eliminated' : '')}" 
+                           style="border-left: 3px solid ${m.team1.color}; ${isAdmin ? 'cursor:pointer;' : 'cursor:default;'}" 
+                           onclick="${isAdmin ? `window.tournamentBox.toggleWinner('${m.id}', '${m.team1.id}')` : ''}" 
+                           title="${isAdmin ? 'Click to mark as winner' : ''}">
                         <span class="fixture-team-name">${m.team1.name}</span>
                         ${m.winnerId === m.team1.id ? '<span class="winner-crown">👑 WINNER</span>' : ''}
                       </div>
@@ -573,15 +632,20 @@ class TournamentBoxView {
                       <span class="fixture-vs-text">VS</span>
 
                       <!-- Team 2 -->
-                      <div class="fixture-team-pill ${m.winnerId === m.team2.id ? 'is-winner' : (m.winnerId && m.winnerId !== m.team2.id ? 'is-eliminated' : '')}" style="border-left: 3px solid ${m.team2.color}; cursor:pointer;" onclick="window.tournamentBox.toggleWinner('${m.id}', '${m.team2.id}')" title="Click to mark as winner">
+                      <div class="fixture-team-pill ${m.winnerId === m.team2.id ? 'is-winner' : (m.winnerId && m.winnerId !== m.team2.id ? 'is-eliminated' : '')}" 
+                           style="border-left: 3px solid ${m.team2.color}; ${isAdmin ? 'cursor:pointer;' : 'cursor:default;'}" 
+                           onclick="${isAdmin ? `window.tournamentBox.toggleWinner('${m.id}', '${m.team2.id}')` : ''}" 
+                           title="${isAdmin ? 'Click to mark as winner' : ''}">
                         <span class="fixture-team-name">${m.team2.name}</span>
                         ${m.winnerId === m.team2.id ? '<span class="winner-crown">👑 WINNER</span>' : ''}
                       </div>
                     </div>
 
-                    <button class="btn-icon fixture-delete-btn" onclick="window.tournamentBox.deleteMatchup('${m.id}')" title="Remove Matchup">
-                      ✕
-                    </button>
+                    ${isAdmin ? `
+                      <button class="btn-icon fixture-delete-btn" onclick="window.tournamentBox.deleteMatchup('${m.id}')" title="Remove Matchup">
+                        ✕
+                      </button>
+                    ` : ''}
                   </div>
                 `).join('')}
               </div>

@@ -2094,4 +2094,43 @@
   box-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
 }
 
+.spectator-vault-indicator {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1rem;
+  background: rgba(12, 18, 30, 0.9);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  border-radius: var(--radius-md);
+  color: var(--accent-cyan);
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.1);
+}
+
+.spectator-pulse-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  box-shadow: 0 0 10px var(--accent-cyan);
+  animation: spectatorPulse 1.5s infinite;
+}
+
+@keyframes spectatorPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.5;
+  }
+}
+
 
