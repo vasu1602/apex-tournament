@@ -13,6 +13,7 @@ class ChampionshipView {
     this.viewerSelectedRaces = {}; // { [matchId]: raceIndex }
     this.tournamentSubMode = 'crew'; // 'crew' | 'solo'
     this.soloSearchQuery = '';
+    this.lastRenderedHtml = null;
   }
 
   setTournamentSubMode(mode) {
@@ -1067,7 +1068,7 @@ class ChampionshipView {
 
                     <!-- EXPANDED RACE BREAKDOWN: RACES TABS + EXACT CAPSULE RACER ROWS (CREW 1 VS CREW 2) -->
                     ${isExpanded ? `
-                      <div style="background:rgba(10,14,22,0.65); border-radius:var(--radius-md); padding:1.25rem; border:1px solid var(--border-subtle); backdrop-filter:blur(12px); display:flex; flex-direction:column; gap:1.25rem; animation: fadeIn 0.25s ease;">
+                      <div style="background:rgba(10,14,22,0.65); border-radius:var(--radius-md); padding:1.25rem; border:1px solid var(--border-subtle); backdrop-filter:blur(12px); display:flex; flex-direction:column; gap:1.25rem;">
                         
                         <!-- Race Selector Tabs -->
                         <div style="display:flex; align-items:center; justify-content:center; gap:0.5rem; flex-wrap:wrap; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:0.85rem;">
@@ -1442,22 +1443,23 @@ class ChampionshipView {
         </div>
       `;
 
-      if (this.tournamentSubMode === 'solo') {
-        container.innerHTML = `
-          <div style="display:flex; flex-direction:column; gap:1.5rem; width:100%;">
-            ${subNavBarHtml}
-            ${soloViewHtml}
-          </div>
-        `;
-      } else {
-        container.innerHTML = `
-          <div style="display:flex; flex-direction:column; gap:1.5rem; width:100%;">
-            ${subNavBarHtml}
-            ${adminHubHtml}
-            ${viewerMatchCardsHtml}
-            ${standingsHtml}
-          </div>
-        `;
+      const finalHtml = (this.tournamentSubMode === 'solo') ? `
+        <div style="display:flex; flex-direction:column; gap:1.5rem; width:100%;">
+          ${subNavBarHtml}
+          ${soloViewHtml}
+        </div>
+      ` : `
+        <div style="display:flex; flex-direction:column; gap:1.5rem; width:100%;">
+          ${subNavBarHtml}
+          ${adminHubHtml}
+          ${viewerMatchCardsHtml}
+          ${standingsHtml}
+        </div>
+      `;
+
+      if (this.lastRenderedHtml !== finalHtml || container.innerHTML === '') {
+        this.lastRenderedHtml = finalHtml;
+        container.innerHTML = finalHtml;
       }
     } catch (err) {
       console.error('Error in renderChampionshipView:', err);
