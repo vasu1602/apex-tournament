@@ -84,7 +84,7 @@ html, body {
   width: 100vw;
   height: 100vh;
   z-index: 0;
-  pointer-events: none;
+  pointer-events: none !important;
 }
 
 /* Confetti Canvas */
@@ -95,7 +95,7 @@ html, body {
   width: 100vw;
   height: 100vh;
   z-index: 999;
-  pointer-events: none;
+  pointer-events: none !important;
 }
 
 /* Main App Wrapper */

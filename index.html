@@ -16,16 +16,16 @@
   <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,400;0,600;0,700;1,700&family=Inter:wght@300;400;500;600;700;800&family=Rajdhani:wght@500;600;700;800&display=swap" rel="stylesheet">
   
   <!-- CSS Stylesheets -->
-  <link rel="stylesheet" href="styles/main.css?v=6.3">
-  <link rel="stylesheet" href="styles/animations.css?v=6.3">
-  <link rel="stylesheet" href="styles/components.css?v=6.3">
+  <link rel="stylesheet" href="styles/main.css?v=6.4">
+  <link rel="stylesheet" href="styles/animations.css?v=6.4">
+  <link rel="stylesheet" href="styles/components.css?v=6.4">
 </head>
 <body>
   <!-- Animated 60fps Canvas Background -->
-  <canvas id="bg-canvas"></canvas>
+  <canvas id="bg-canvas" style="pointer-events: none !important;"></canvas>
 
   <!-- Confetti Celebration Overlay Canvas -->
-  <canvas id="confetti-canvas"></canvas>
+  <canvas id="confetti-canvas" style="pointer-events: none !important;"></canvas>
 
   <div class="app-container">
     <!-- Main Top Navigation Bar -->
@@ -145,20 +145,6 @@
 
     </main>
 
-    <!-- Global Toast Container -->
-    <div id="toast-container"></div>
-
-    <!-- Universal Modal Dialog -->
-    <div class="modal-backdrop" id="general-modal" onclick="if(event.target === this) window.app.closeModal();">
-      <div class="modal-card">
-        <div class="modal-header">
-          <h3 class="modal-title" id="general-modal-title">Modal Title</h3>
-          <button class="btn-icon" onclick="window.app.closeModal()" style="width:32px; height:32px;">✕</button>
-        </div>
-        <div class="modal-body" id="general-modal-body"></div>
-      </div>
-    </div>
-
     <!-- Footer -->
     <footer class="app-footer">
       <div class="footer-credits">
@@ -171,6 +157,20 @@
     </footer>
   </div>
 
+  <!-- Global Toast Container (Top-Level Body) -->
+  <div id="toast-container"></div>
+
+  <!-- Universal Modal Dialog (Top-Level Body) -->
+  <div class="modal-backdrop" id="general-modal" onclick="if(event.target === this) window.app.closeModal();">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" id="general-modal-title">Modal Title</h3>
+        <button class="btn-icon" onclick="window.app.closeModal()" style="width:32px; height:32px;">✕</button>
+      </div>
+      <div class="modal-body" id="general-modal-body"></div>
+    </div>
+  </div>
+
   <!-- Real-Time Multi-Device Synchronization (Firebase Cloud DB + WebRTC Mesh + Cloud MQTT) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -178,6 +178,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
 
   <!-- Main ES Module Script -->
-  <script type="module" src="js/app.js?v=6.3"></script> 
+  <script type="module" src="js/app.js?v=6.4"></script> 
 </body>
 </html>

@@ -1005,7 +1005,7 @@
   background: rgba(4, 6, 10, 0.85);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  z-index: 1000;
+  z-index: 99999;
   display: none;
   place-items: center;
   padding: 1.5rem;
