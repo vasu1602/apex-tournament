@@ -1,6 +1,6 @@
 import { store, POSITION_POINTS_MAP } from './state.js';
 import { soundFX } from './audio.js';
-import { DEFAULT_RACER_AVATAR, DEFAULT_TEAM_LOGO } from './presets.js';
+import { DEFAULT_RACER_AVATAR, DEFAULT_TEAM_LOGO, PRESET_AVATARS } from './presets.js';
 
 class ChampionshipView {
   constructor() {
@@ -288,9 +288,33 @@ class ChampionshipView {
     return result;
   }
 
+  getRacerProfileImage(racer) {
+    if (!racer) return DEFAULT_RACER_AVATAR;
+    if (racer.photoUrl && racer.photoUrl.trim() && racer.photoUrl !== 'assets/avatars/default.png') return racer.photoUrl;
+    if (racer.avatar && racer.avatar.trim() && racer.avatar !== 'assets/avatars/default.png') return racer.avatar;
+    if (racer.avatarUrl && racer.avatarUrl.trim() && racer.avatarUrl !== 'assets/avatars/default.png') return racer.avatarUrl;
+    if (racer.photo && racer.photo.trim()) return racer.photo;
+    if (racer.presetAvatarId) {
+      const preset = PRESET_AVATARS.find(a => a.id === racer.presetAvatarId);
+      if (preset && preset.svg) return preset.svg;
+    }
+    return DEFAULT_RACER_AVATAR;
+  }
+
   computeSoloDriverStandings(state) {
     const { tournamentMatchups = [], teams = [], racers = [] } = state || {};
     const driverStatsMap = {};
+
+    const findOriginalRacer = (identifier) => {
+      if (!identifier) return null;
+      return racers.find(r => r && (
+        r.id === identifier || 
+        r.name === identifier || 
+        (r.name && identifier.endsWith(`_${r.name}`)) || 
+        (r.id && identifier.endsWith(`_${r.id}`)) ||
+        (r.name && identifier.toLowerCase() === r.name.toLowerCase())
+      ));
+    };
 
     // 1. Initialize with all registered racers
     racers.forEach(r => {
@@ -299,8 +323,8 @@ class ChampionshipView {
       driverStatsMap[r.id] = {
         id: r.id,
         name: r.name,
-        avatarUrl: r.avatarUrl || DEFAULT_RACER_AVATAR,
-        tier: r.tier || 'Tier A',
+        avatarUrl: this.getRacerProfileImage(r),
+        tier: r.tier || r.category || 'Tier A',
         team: team,
         totalPoints: 0,
         racesPlayed: 0,
@@ -316,13 +340,14 @@ class ChampionshipView {
       if (Array.isArray(t.roster)) {
         t.roster.forEach(r => {
           if (!r) return;
-          const rId = r.id || `${t.id}_${r.name}`;
+          const matchedR = findOriginalRacer(r.id) || findOriginalRacer(r.name);
+          const rId = matchedR ? matchedR.id : (r.id || `${t.id}_${r.name}`);
           if (!driverStatsMap[rId]) {
             driverStatsMap[rId] = {
               id: rId,
-              name: r.name,
-              avatarUrl: r.avatarUrl || DEFAULT_RACER_AVATAR,
-              tier: r.tier || 'Tier A',
+              name: (matchedR && matchedR.name) || r.name,
+              avatarUrl: this.getRacerProfileImage(matchedR || r),
+              tier: (matchedR && (matchedR.tier || matchedR.category)) || r.tier || 'Tier A',
               team: t,
               totalPoints: 0,
               racesPlayed: 0,
@@ -331,6 +356,11 @@ class ChampionshipView {
               top10: 0,
               dnfs: 0
             };
+          } else {
+            if (matchedR) {
+              driverStatsMap[rId].avatarUrl = this.getRacerProfileImage(matchedR);
+            }
+            if (!driverStatsMap[rId].team) driverStatsMap[rId].team = t;
           }
         });
       }
@@ -373,20 +403,27 @@ class ChampionshipView {
               driverName = key.replace(`${t2.id}_`, '');
               driverTeam = t2;
             }
-            driverStatsMap[key] = {
-              id: key,
-              name: driverName,
-              avatarUrl: DEFAULT_RACER_AVATAR,
-              tier: 'Driver',
-              team: driverTeam,
-              totalPoints: 0,
-              racesPlayed: 0,
-              wins: 0,
-              podiums: 0,
-              top10: 0,
-              dnfs: 0
-            };
-            targetDriver = driverStatsMap[key];
+            const matchedR = findOriginalRacer(key) || findOriginalRacer(driverName);
+            const rId = matchedR ? matchedR.id : key;
+
+            if (driverStatsMap[rId]) {
+              targetDriver = driverStatsMap[rId];
+            } else {
+              driverStatsMap[rId] = {
+                id: rId,
+                name: (matchedR && matchedR.name) || driverName,
+                avatarUrl: this.getRacerProfileImage(matchedR),
+                tier: (matchedR && (matchedR.tier || matchedR.category)) || 'Driver',
+                team: driverTeam,
+                totalPoints: 0,
+                racesPlayed: 0,
+                wins: 0,
+                podiums: 0,
+                top10: 0,
+                dnfs: 0
+              };
+              targetDriver = driverStatsMap[rId];
+            }
           }
 
           if (targetDriver) {
@@ -1274,8 +1311,8 @@ class ChampionshipView {
           ${topScorer ? `
             <div style="background:linear-gradient(135deg, rgba(255,215,0,0.12) 0%, rgba(0,242,254,0.06) 100%); border:1px solid var(--border-gold); border-radius:var(--radius-md); padding:1rem 1.25rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
               <div style="display:flex; align-items:center; gap:1rem;">
-                <div style="width:48px; height:48px; border-radius:50%; border:2px solid var(--accent-gold); overflow:hidden; display:flex; align-items:center; justify-content:center; background:#000; box-shadow:0 0 15px rgba(255,215,0,0.4);">
-                  <img src="${topScorer.avatarUrl || DEFAULT_RACER_AVATAR}" style="width:100%; height:100%; object-fit:cover;">
+                <div style="width:52px; height:52px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.5); flex-shrink:0;">
+                  <img src="${topScorer.avatarUrl || DEFAULT_RACER_AVATAR}" style="width:100%; height:100%; object-fit:cover; display:block;" onerror="this.src='${DEFAULT_RACER_AVATAR}'">
                 </div>
                 <div>
                   <div style="display:flex; align-items:center; gap:0.5rem;">
@@ -1342,8 +1379,8 @@ class ChampionshipView {
                       <!-- Driver Profile -->
                       <td style="padding:0.75rem 0.85rem;">
                         <div style="display:flex; align-items:center; gap:0.75rem;">
-                          <div style="width:36px; height:36px; border-radius:50%; border:2px solid ${t ? (t.color || 'var(--accent-cyan)') : 'rgba(255,255,255,0.2)'}; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#000; flex-shrink:0;">
-                            <img src="${driver.avatarUrl || DEFAULT_RACER_AVATAR}" style="width:100%; height:100%; object-fit:cover;">
+                          <div style="width:38px; height:38px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.4); flex-shrink:0;">
+                            <img src="${driver.avatarUrl || DEFAULT_RACER_AVATAR}" style="width:100%; height:100%; object-fit:cover; display:block;" onerror="this.src='${DEFAULT_RACER_AVATAR}'">
                           </div>
                           <div style="display:flex; flex-direction:column; gap:0.15rem;">
                             <div style="display:flex; align-items:center; gap:0.45rem;">
