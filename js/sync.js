@@ -301,15 +301,17 @@ class SyncBridge {
       }
     }
 
-    // Hash state including matchups details (so winner updates always trigger re-render)
+    // Hash state including racers, teams, matchups details (so any racer edit/delete triggers instant re-render)
     const stateHash = JSON.stringify({
       activeAuction: remoteData.activeAuction,
-      racersCount: remoteData.racers?.length,
-      teamsCount: remoteData.teams?.length,
+      racers: remoteData.racers,
+      teams: remoteData.teams,
       historyCount: remoteData.auctionHistory?.length,
       rounds: remoteData.tournamentRounds,
       activeRound: remoteData.activeTournamentRoundId,
       matchups: remoteData.tournamentMatchups,
+      pending1: remoteData.pendingTeam1?.id,
+      pending2: remoteData.pendingTeam2?.id,
       timestamp: remoteData.updatedAt
     });
 
@@ -352,12 +354,14 @@ class SyncBridge {
 
     const stateHash = JSON.stringify({
       activeAuction: payloadToSync.activeAuction,
-      racersCount: payloadToSync.racers?.length,
-      teamsCount: payloadToSync.teams?.length,
+      racers: payloadToSync.racers,
+      teams: payloadToSync.teams,
       historyCount: payloadToSync.auctionHistory?.length,
       rounds: payloadToSync.tournamentRounds,
       activeRound: payloadToSync.activeTournamentRoundId,
       matchups: payloadToSync.tournamentMatchups,
+      pending1: payloadToSync.pendingTeam1?.id,
+      pending2: payloadToSync.pendingTeam2?.id,
       timestamp: payloadToSync.updatedAt
     });
     this.lastSyncedHash = stateHash;

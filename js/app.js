@@ -330,9 +330,21 @@ class AppController {
   // --- FILTER & SEARCH HANDLERS ---
   setRacerCategoryFilter(cat) {
     viewerView.currentCategoryFilter = cat;
-    // update buttons
     document.querySelectorAll('.cat-pill').forEach((btn) => {
       if (btn.getAttribute('data-cat') === cat) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+    viewerView.renderRacersGrid('racers-container');
+  }
+
+  setRacerTierFilter(tier) {
+    const formatted = tier === 'all' ? 'All Tiers' : tier;
+    viewerView.currentCategoryFilter = formatted;
+    document.querySelectorAll('.tier-pill').forEach((btn) => {
+      if (btn.getAttribute('data-tier') === tier) {
         btn.classList.add('active');
       } else {
         btn.classList.remove('active');

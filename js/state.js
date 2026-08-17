@@ -180,6 +180,22 @@ class StateStore {
       }
     }
 
+    const incomingRacers = Array.isArray(newState.racers) ? newState.racers : null;
+    let finalRacers = this.state.racers || [];
+    if (incomingRacers) {
+      if (incomingRacers.length > 0 || newState.isExplicitClear || incomingTime >= (this.state.updatedAt || 0)) {
+        finalRacers = incomingRacers;
+      }
+    }
+
+    const incomingTeams = Array.isArray(newState.teams) ? newState.teams : null;
+    let finalTeams = this.state.teams || [];
+    if (incomingTeams) {
+      if (incomingTeams.length > 0 || newState.isExplicitClear || incomingTime >= (this.state.updatedAt || 0)) {
+        finalTeams = incomingTeams;
+      }
+    }
+
     // Filter matchups so no orphan matchups from deleted rounds remain
     const validRoundIds = new Set(incomingRounds.map(r => r.id));
     finalMatchups = finalMatchups.filter(m => validRoundIds.has(m.roundId || incomingRounds[0]?.id));
@@ -191,8 +207,8 @@ class StateStore {
     this.state = {
       ...this.state,
       tournamentName: newState.tournamentName || this.state.tournamentName,
-      teams: Array.isArray(newState.teams) && newState.teams.length > 0 ? newState.teams : (this.state.teams || []),
-      racers: Array.isArray(newState.racers) && newState.racers.length > 0 ? newState.racers : (this.state.racers || []),
+      teams: finalTeams,
+      racers: finalRacers,
       accessCodes: Array.isArray(newState.accessCodes) ? newState.accessCodes : (this.state.accessCodes || DEFAULT_ACCESS_CODES),
       activeAuction: newState.activeAuction || this.state.activeAuction,
       auctionHistory: Array.isArray(newState.auctionHistory) ? newState.auctionHistory : this.state.auctionHistory,
