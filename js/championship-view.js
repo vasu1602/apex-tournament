@@ -728,29 +728,30 @@ class ChampionshipView {
                       </div>
                     </div>
 
-                    <!-- Head-to-Head Main Score Board -->
+                    <!-- Head-to-Head Main Score Board (Score in Front of Team Name, White Glow) -->
                     <div style="display:grid; grid-template-columns: 1fr auto 1fr; align-items:center; gap:1rem; padding:0.5rem 0;">
                       
                       <!-- Team 1 Side (Clickable to Expand) -->
-                      <div style="cursor:pointer; background:${isT1Expanded ? 'rgba(0,242,254,0.08)' : 'rgba(18,23,36,0.5)'}; border:1px solid ${isT1Expanded ? t1.color : 'rgba(255,255,255,0.05)'}; padding:0.85rem 1rem; border-radius:var(--radius-md); border-left:4px solid ${t1.color}; transition:all 0.2s ease;" onclick="window.championshipView.toggleTeamRosterExpand('${match.id}', '${t1.id}')" title="Tap to view driver points breakdown">
-                        <div style="display:flex; align-items:center; gap:0.65rem;">
-                          <div style="width:36px; height:36px; border-radius:var(--radius-sm); border:2px solid ${t1.color}; overflow:hidden; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.5);">
-                            ${t1.logoUrl ? `<img src="${t1.logoUrl}" style="width:100%; height:100%; object-fit:cover;">` : `<span>${t1.logoIcon || '🏎️'}</span>`}
-                          </div>
-                          <div style="min-width:0; flex:1;">
-                            <div style="font-family:var(--font-display); font-size:1.15rem; font-weight:800; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">
-                              ${t1.name}
+                      <div style="cursor:pointer; background:${isT1Expanded ? 'rgba(0,242,254,0.08)' : 'rgba(18,23,36,0.5)'}; border:1px solid ${isT1Expanded ? t1.color : 'rgba(255,255,255,0.05)'}; padding:0.85rem 1.15rem; border-radius:var(--radius-md); border-left:4px solid ${t1.color}; transition:all 0.2s ease;" onclick="window.championshipView.toggleTeamRosterExpand('${match.id}', '${t1.id}')" title="Tap to view driver points breakdown">
+                        <div style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem;">
+                          <!-- Team Info -->
+                          <div style="display:flex; align-items:center; gap:0.75rem; min-width:0;">
+                            <div style="width:38px; height:38px; border-radius:var(--radius-sm); border:2px solid ${t1.color}; overflow:hidden; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.5); flex-shrink:0;">
+                              ${t1.logoUrl ? `<img src="${t1.logoUrl}" style="width:100%; height:100%; object-fit:cover;">` : `<span>${t1.logoIcon || '🏎️'}</span>`}
                             </div>
-                            <div style="font-size:0.72rem; color:var(--accent-cyan); display:flex; align-items:center; gap:0.3rem;">
-                              <span>${isT1Expanded ? '▲ Hide Driver Points' : '▼ Tap for Driver Points'}</span>
+                            <div style="min-width:0;">
+                              <div style="font-family:var(--font-display); font-size:1.15rem; font-weight:800; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">
+                                ${t1.name}
+                              </div>
+                              <div style="font-size:0.72rem; color:var(--accent-cyan); display:flex; align-items:center; gap:0.3rem; margin-top:2px;">
+                                <span>${isT1Expanded ? '▲ Hide Driver Points' : '▼ Tap for Driver Points'}</span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        
-                        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:0.6rem; border-top:1px solid rgba(255,255,255,0.05); padding-top:0.4rem;">
-                          <span style="font-size:0.75rem; color:var(--text-muted);">Series Score</span>
-                          <div style="font-family:var(--font-mono); font-size:1.25rem; font-weight:900; color:${t1.color};">
-                            ${mTotalPts1} PTS ${matchFmt !== 'SINGLE' ? `<span style="font-size:0.85rem; color:#fff;">(${mWins1}W)</span>` : ''}
+
+                          <!-- Score in front of Team Name (White + Glow) -->
+                          <div style="font-family:var(--font-mono); font-size:1.45rem; font-weight:900; color:#ffffff; text-shadow:0 0 10px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.6), 0 0 35px rgba(255,255,255,0.4); flex-shrink:0; text-align:right; letter-spacing:0.5px;">
+                            ${mTotalPts1} PTS
                           </div>
                         </div>
                       </div>
@@ -760,32 +761,30 @@ class ChampionshipView {
                         <div style="font-family:var(--font-display); font-size:1.1rem; font-weight:900; color:var(--text-muted); background:rgba(255,255,255,0.05); width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:1px solid rgba(255,255,255,0.1); margin:0 auto;">
                           VS
                         </div>
-                        <div style="font-family:var(--font-mono); font-size:0.85rem; color:var(--text-muted); margin-top:0.3rem;">
-                          ${mWins1} - ${mWins2}
-                        </div>
                       </div>
 
                       <!-- Team 2 Side (Clickable to Expand) -->
-                      <div style="cursor:pointer; background:${isT2Expanded ? 'rgba(255,59,92,0.08)' : 'rgba(18,23,36,0.5)'}; border:1px solid ${isT2Expanded ? t2.color : 'rgba(255,255,255,0.05)'}; padding:0.85rem 1rem; border-radius:var(--radius-md); border-right:4px solid ${t2.color}; text-align:right; transition:all 0.2s ease;" onclick="window.championshipView.toggleTeamRosterExpand('${match.id}', '${t2.id}')" title="Tap to view driver points breakdown">
-                        <div style="display:flex; align-items:center; justify-content:flex-end; gap:0.65rem;">
-                          <div style="min-width:0; flex:1;">
-                            <div style="font-family:var(--font-display); font-size:1.15rem; font-weight:800; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">
-                              ${t2.name}
+                      <div style="cursor:pointer; background:${isT2Expanded ? 'rgba(255,59,92,0.08)' : 'rgba(18,23,36,0.5)'}; border:1px solid ${isT2Expanded ? t2.color : 'rgba(255,255,255,0.05)'}; padding:0.85rem 1.15rem; border-radius:var(--radius-md); border-right:4px solid ${t2.color}; transition:all 0.2s ease;" onclick="window.championshipView.toggleTeamRosterExpand('${match.id}', '${t2.id}')" title="Tap to view driver points breakdown">
+                        <div style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem;">
+                          <!-- Score in front of Team Name (White + Glow) -->
+                          <div style="font-family:var(--font-mono); font-size:1.45rem; font-weight:900; color:#ffffff; text-shadow:0 0 10px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.6), 0 0 35px rgba(255,255,255,0.4); flex-shrink:0; text-align:left; letter-spacing:0.5px;">
+                            ${mTotalPts2} PTS
+                          </div>
+
+                          <!-- Team Info -->
+                          <div style="display:flex; align-items:center; justify-content:flex-end; gap:0.75rem; min-width:0; text-align:right;">
+                            <div style="min-width:0;">
+                              <div style="font-family:var(--font-display); font-size:1.15rem; font-weight:800; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">
+                                ${t2.name}
+                              </div>
+                              <div style="font-size:0.72rem; color:var(--accent-cyan); display:flex; align-items:center; justify-content:flex-end; gap:0.3rem; margin-top:2px;">
+                                <span>${isT2Expanded ? '▲ Hide Driver Points' : '▼ Tap for Driver Points'}</span>
+                              </div>
                             </div>
-                            <div style="font-size:0.72rem; color:var(--accent-cyan); display:flex; align-items:center; justify-content:flex-end; gap:0.3rem;">
-                              <span>${isT2Expanded ? '▲ Hide Driver Points' : '▼ Tap for Driver Points'}</span>
+                            <div style="width:38px; height:38px; border-radius:var(--radius-sm); border:2px solid ${t2.color}; overflow:hidden; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.5); flex-shrink:0;">
+                              ${t2.logoUrl ? `<img src="${t2.logoUrl}" style="width:100%; height:100%; object-fit:cover;">` : `<span>${t2.logoIcon || '⚡'}</span>`}
                             </div>
                           </div>
-                          <div style="width:36px; height:36px; border-radius:var(--radius-sm); border:2px solid ${t2.color}; overflow:hidden; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.5);">
-                            ${t2.logoUrl ? `<img src="${t2.logoUrl}" style="width:100%; height:100%; object-fit:cover;">` : `<span>${t2.logoIcon || '⚡'}</span>`}
-                          </div>
-                        </div>
-                        
-                        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:0.6rem; border-top:1px solid rgba(255,255,255,0.05); padding-top:0.4rem;">
-                          <div style="font-family:var(--font-mono); font-size:1.25rem; font-weight:900; color:${t2.color};">
-                            ${matchFmt !== 'SINGLE' ? `<span style="font-size:0.85rem; color:#fff;">(${mWins2}W) </span>` : ''}${mTotalPts2} PTS
-                          </div>
-                          <span style="font-size:0.75rem; color:var(--text-muted);">Series Score</span>
                         </div>
                       </div>
                     </div>
