@@ -381,13 +381,12 @@ class SyncBridge {
     if (!remoteData || typeof remoteData !== 'object') return;
 
     const currentState = store.getState();
-    const isAdmin = Boolean(currentState.currentUser && currentState.currentUser.isAuthenticated);
-
     const remoteTime = Number(remoteData.updatedAt) || 0;
     const localTime = Number(currentState.updatedAt) || 0;
 
-    // If current tab is Admin and has newer local uncommitted state, ignore older remote updates
-    if (isAdmin && localTime > 0 && remoteTime > 0 && remoteTime < localTime) {
+    // Strict Monotonic Ordering for ALL clients (Admin AND Viewers):
+    // Discard any incoming packet that is older than or equal to current local state timestamp
+    if (localTime > 0 && remoteTime > 0 && remoteTime <= localTime && !remoteData.isExplicitClear) {
       return;
     }
 
@@ -482,8 +481,7 @@ class SyncBridge {
           roomId: this.roomId,
           state: payloadToSync
         });
-        // retain: true ensures newly connected viewers immediately get the latest tournament state!
-        this.mqttClient.publish(this.mqttTopic, msg, { qos: 1, retain: true });
+        this.mqttClient.publish(this.mqttTopic, msg, { qos: 0, retain: false });
       } catch (err) {
         console.warn('[Cloud Sync] Publish notice:', err);
       }

@@ -186,8 +186,15 @@ class StateStore {
   // Receive state from other tabs & cloud sync
   applyExternalState(newState) {
     if (!newState || typeof newState !== 'object') return;
-    const currentSession = this.state.currentUser;
     const incomingTime = Number(newState.updatedAt) || Date.now();
+    const localTime = Number(this.state.updatedAt) || 0;
+
+    // Strict monotonic clock: Discard if incoming packet is older or same age as current local state
+    if (localTime > 0 && incomingTime > 0 && incomingTime <= localTime && !newState.isExplicitClear) {
+      return;
+    }
+
+    const currentSession = this.state.currentUser;
 
     const toArray = (val, fallback = []) => {
       if (!val) return fallback;
