@@ -125,8 +125,8 @@ class AppController {
   }
 
   renderCurrentView() {
-    const state = store.getState();
-    const isAuth = state.currentUser.isAuthenticated;
+    const state = store.getState() || {};
+    const isAuth = Boolean(state.currentUser && state.currentUser.isAuthenticated);
 
     // Control visibility of the Race Control navigation tab
     const adminNavBtn = document.getElementById('nav-admin-btn');
@@ -144,7 +144,7 @@ class AppController {
       if (isAuth) {
         roleContainer.innerHTML = `
           <div class="admin-profile-pill">
-            <span>${state.currentUser.adminName}</span>
+            <span>${state.currentUser.adminName || 'Admin'}</span>
             <button class="admin-profile-signout" onclick="window.app.handleSignOut()" title="Sign Out">
               ✕
             </button>
@@ -159,15 +159,38 @@ class AppController {
       }
     }
 
-    // Always keep public views fresh
-    viewerView.renderLiveStage('live-arena-view');
-    viewerView.renderTeamsGrid('teams-container');
-    viewerView.renderRacersGrid('racers-container');
-    tournamentBox.renderTournamentView('tournament-view');
+    // Always keep public views fresh with independent resilience
+    try {
+      viewerView.renderLiveStage('live-arena-view');
+    } catch (e) {
+      console.error('Error rendering Live Arena:', e);
+    }
+
+    try {
+      viewerView.renderTeamsGrid('teams-container');
+    } catch (e) {
+      console.error('Error rendering Teams:', e);
+    }
+
+    try {
+      viewerView.renderRacersGrid('racers-container');
+    } catch (e) {
+      console.error('Error rendering Racers:', e);
+    }
+
+    try {
+      tournamentBox.renderTournamentView('tournament-view');
+    } catch (e) {
+      console.error('Error rendering Tournament:', e);
+    }
 
     // Render admin view only if authenticated
     if (isAuth) {
-      adminView.renderAdminDesk('admin-desk-view');
+      try {
+        adminView.renderAdminDesk('admin-desk-view');
+      } catch (e) {
+        console.error('Error rendering Admin Desk:', e);
+      }
     } else {
       const adminContainer = document.getElementById('admin-desk-view');
       if (adminContainer) {

@@ -94,170 +94,185 @@ class ViewerView {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    const state = store.getState();
-    const { activeAuction, racers, teams, currentUser } = state;
-    const currentRacer = racers.find((r) => r.id === activeAuction.racerId);
-    const leadingTeam = teams.find((t) => t.id === activeAuction.leadingTeamId);
+    try {
+      const state = store.getState() || {};
+      const racers = Array.isArray(state.racers) ? state.racers : [];
+      const teams = Array.isArray(state.teams) ? state.teams : [];
+      const currentUser = state.currentUser || { isAuthenticated: false, role: 'viewer', adminName: 'Spectator' };
+      const activeAuction = state.activeAuction || {
+        racerId: null,
+        currentBid: 0,
+        leadingTeamId: null,
+        bidHistory: [],
+        timerSeconds: 30,
+        isTimerRunning: false,
+        status: 'idle'
+      };
+      const bidHistory = Array.isArray(activeAuction.bidHistory) ? activeAuction.bidHistory : [];
+      const currentBidNum = Number(activeAuction.currentBid) || 0;
 
-    // Filter racers who have come to the bidding block
-    const allBiddedRacers = racers.filter((r) => r.status === 'sold' || r.status === 'unsold');
-    const soldCount = racers.filter((r) => r.status === 'sold').length;
-    const unsoldCount = racers.filter((r) => r.status === 'unsold').length;
-    const totalTradedPts = racers.filter((r) => r.status === 'sold').reduce((sum, r) => sum + (Number(r.soldPoints) || 0), 0);
+      const currentRacer = activeAuction.racerId ? racers.find((r) => r && r.id === activeAuction.racerId) : null;
+      const leadingTeam = activeAuction.leadingTeamId ? teams.find((t) => t && t.id === activeAuction.leadingTeamId) : null;
 
-    let displayHistoryRacers = allBiddedRacers;
-    if (this.liveArenaHistoryFilter === 'sold') {
-      displayHistoryRacers = allBiddedRacers.filter((r) => r.status === 'sold');
-    } else if (this.liveArenaHistoryFilter === 'unsold') {
-      displayHistoryRacers = allBiddedRacers.filter((r) => r.status === 'unsold');
-    }
+      // Filter racers who have come to the bidding block
+      const allBiddedRacers = racers.filter((r) => r && (r.status === 'sold' || r.status === 'unsold'));
+      const soldCount = racers.filter((r) => r && r.status === 'sold').length;
+      const unsoldCount = racers.filter((r) => r && r.status === 'unsold').length;
 
-    // Top block: Either active spotlight OR waiting card
-    let topStageHtml = '';
-    if (!currentRacer) {
-      topStageHtml = `
-        <div class="glass-card" style="text-align:center; padding: 3rem 1.5rem; border-top: 3px solid var(--accent-cyan); margin-bottom: 2rem;">
-          <div style="font-size: 3rem; margin-bottom: 0.75rem;">🏁</div>
-          <h2 style="font-family: var(--font-display); font-size: 1.6rem; letter-spacing: 2px; margin-bottom: 0.4rem; text-transform: uppercase;">
-            ${racers.length === 0 ? 'No Racers Registered Yet' : 'Live Auction Block • Awaiting Next Driver'}
-          </h2>
-          <p style="color: var(--text-secondary); max-width: 520px; margin: 0 auto 1.5rem; font-size:0.88rem;">
-            ${racers.length === 0 
-              ? 'Register tournament racers with photo, name, tier (S, A, B, C, D), and starting bid.' 
-              : 'The auctioneer has not yet brought a driver to the center block. Below is the live reel of all drivers who entered bidding so far.'}
-          </p>
-          <div style="display: flex; justify-content: center; gap: 0.75rem; flex-wrap: wrap;">
-            ${currentUser.isAuthenticated ? `
-              <button class="btn btn-cyan" onclick="window.app.openAddRacerModal()">Add New Racer</button>
-              <button class="btn btn-gold" onclick="window.app.openAddTeamModal()">Add Racing Team</button>
-              <button class="btn btn-primary" onclick="window.app.switchTab('admin-view')">Open Race Control</button>
-            ` : `
-              <button class="btn btn-cyan" onclick="window.app.switchTab('teams-view')">View Teams & Points</button>
-              <button class="btn btn-outline" onclick="window.app.switchTab('racers-view')">Browse Full Racer Pool</button>
-            `}
-          </div>
-        </div>
-      `;
-    } else {
-      const racerPhotoSrc = currentRacer.photoUrl || currentRacer.avatar;
-      const racerTier = currentRacer.tier || currentRacer.category || 'Tier S';
-      const tierCode = racerTier.replace('Tier ', '').trim().toLowerCase();
+      let displayHistoryRacers = allBiddedRacers;
+      if (this.liveArenaHistoryFilter === 'sold') {
+        displayHistoryRacers = allBiddedRacers.filter((r) => r.status === 'sold');
+      } else if (this.liveArenaHistoryFilter === 'unsold') {
+        displayHistoryRacers = allBiddedRacers.filter((r) => r.status === 'unsold');
+      }
 
-      topStageHtml = `
-        <div class="arena-grid" style="margin-bottom: 2rem;">
-          <!-- 1. RACER SPOTLIGHT -->
-          <div class="glass-card racer-spotlight-card" style="display:flex; flex-direction:column; justify-content:space-between;">
-            <div>
-              <div class="racer-spotlight-header">
-                <div class="racer-identity">
-                  <span class="racer-category-tag tier-badge-${tierCode}">${racerTier}</span>
-                  <h2 class="racer-spotlight-name" style="font-size:1.85rem; margin-top:0.25rem;">${currentRacer.name}</h2>
-                </div>
-                <span class="racer-status-badge badge-${currentRacer.status}">${currentRacer.status}</span>
-              </div>
-
-              <div class="racer-media-wrapper" style="margin-top:1.25rem;">
-                <div class="racer-avatar-box" style="width:140px; height:140px; border-radius:var(--radius-lg); border:2px solid var(--accent-cyan); overflow:hidden; box-shadow: 0 0 20px rgba(0,242,254,0.25);">
-                  <img src="${racerPhotoSrc}" alt="${currentRacer.name}" style="width:100%; height:100%; object-fit:cover;">
-                </div>
-                <div class="racer-bio-box" style="display:flex; flex-direction:column; justify-content:center; gap:0.6rem;">
-                  <div>
-                    <span style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Assigned Tier</span>
-                    <div style="font-family:var(--font-display); font-size:1.25rem; font-weight:800; color:var(--accent-cyan);">${racerTier}</div>
-                  </div>
-                  <div>
-                    <span style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Starting Base Bid</span>
-                    <div style="font-family:var(--font-mono); font-size:1.35rem; font-weight:800; color:var(--accent-gold);">${currentRacer.basePoints.toLocaleString()} PTS</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div style="margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-size:0.8rem; color:var(--text-secondary);">Tournament Pilot Dossier</span>
-              <button class="btn btn-outline btn-sm" onclick="window.app.inspectRacer('${currentRacer.id}')">
-                View Full Card
-              </button>
+      // Top block: Either active spotlight OR waiting card
+      let topStageHtml = '';
+      if (!currentRacer) {
+        topStageHtml = `
+          <div class="glass-card" style="text-align:center; padding: 3rem 1.5rem; border-top: 3px solid var(--accent-cyan); margin-bottom: 2rem;">
+            <div style="font-size: 3rem; margin-bottom: 0.75rem;">🏁</div>
+            <h2 style="font-family: var(--font-display); font-size: 1.6rem; letter-spacing: 2px; margin-bottom: 0.4rem; text-transform: uppercase;">
+              ${racers.length === 0 ? 'No Racers Registered Yet' : 'Live Auction Block • Awaiting Next Driver'}
+            </h2>
+            <p style="color: var(--text-secondary); max-width: 520px; margin: 0 auto 1.5rem; font-size:0.88rem;">
+              ${racers.length === 0 
+                ? 'Register tournament racers with photo, name, tier (S, A, B, C, D), and starting bid.' 
+                : 'The auctioneer has not yet brought a driver to the center block. Below is the live reel of all drivers who entered bidding so far.'}
+            </p>
+            <div style="display: flex; justify-content: center; gap: 0.75rem; flex-wrap: wrap;">
+              ${currentUser.isAuthenticated ? `
+                <button class="btn btn-cyan" onclick="window.app.openAddRacerModal()">Add New Racer</button>
+                <button class="btn btn-gold" onclick="window.app.openAddTeamModal()">Add Racing Team</button>
+                <button class="btn btn-primary" onclick="window.app.switchTab('admin-view')">Open Race Control</button>
+              ` : `
+                <button class="btn btn-cyan" onclick="window.app.switchTab('teams-view')">View Teams & Points</button>
+                <button class="btn btn-outline" onclick="window.app.switchTab('racers-view')">Browse Full Racer Pool</button>
+              `}
             </div>
           </div>
+        `;
+      } else {
+        const racerPhotoSrc = currentRacer.photoUrl || currentRacer.avatar || 'assets/avatars/default.png';
+        const racerTier = String(currentRacer.tier || currentRacer.category || 'Tier S');
+        const tierCode = racerTier.replace('Tier ', '').trim().toLowerCase();
+        const basePtsNum = Number(currentRacer.basePoints) || 0;
 
-          <!-- 2. CENTER AUCTION STAGE -->
-          <div class="glass-card auction-stage-card">
-            ${activeAuction.status === 'sold' ? `
-              <div class="sold-overlay-box anim-sold-banner">
-                <div class="sold-gavel-icon">🔨</div>
-                <div class="sold-title">SOLD!</div>
-                <div class="sold-subtitle">
-                  Acquired by <strong>${leadingTeam ? leadingTeam.name : 'Winning Team'}</strong> for <strong style="color:var(--accent-gold);">${activeAuction.currentBid.toLocaleString()} PTS</strong>
+        topStageHtml = `
+          <div class="arena-grid" style="margin-bottom: 2rem;">
+            <!-- 1. RACER SPOTLIGHT -->
+            <div class="glass-card racer-spotlight-card" style="display:flex; flex-direction:column; justify-content:space-between;">
+              <div>
+                <div class="racer-spotlight-header">
+                  <div class="racer-identity">
+                    <span class="racer-category-tag tier-badge-${tierCode}">${racerTier}</span>
+                    <h2 class="racer-spotlight-name" style="font-size:1.85rem; margin-top:0.25rem;">${currentRacer.name || 'Unnamed Pilot'}</h2>
+                  </div>
+                  <span class="racer-status-badge badge-${currentRacer.status || 'upcoming'}">${currentRacer.status || 'upcoming'}</span>
                 </div>
-                <button class="btn btn-gold" onclick="window.app.switchTab('teams-view')">View Standings</button>
-              </div>
-            ` : ''}
 
-            <div class="stage-top-bar">
-              <span class="stage-title">Live Auction Floor</span>
-              <span class="section-tag" style="font-size:0.72rem; color:var(--accent-cyan);">CHAMPIONSHIP BLOCK</span>
+                <div class="racer-media-wrapper" style="margin-top:1.25rem;">
+                  <div class="racer-avatar-box" style="width:140px; height:140px; border-radius:var(--radius-lg); border:2px solid var(--accent-cyan); overflow:hidden; box-shadow: 0 0 20px rgba(0,242,254,0.25);">
+                    <img src="${racerPhotoSrc}" alt="${currentRacer.name || 'Racer'}" class="racer-card-img" style="width:100%; height:100%; object-fit:cover;">
+                  </div>
+                  <div class="racer-bio-box" style="display:flex; flex-direction:column; justify-content:center; gap:0.6rem;">
+                    <div>
+                      <span style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Assigned Tier</span>
+                      <div style="font-family:var(--font-display); font-size:1.25rem; font-weight:800; color:var(--accent-cyan);">${racerTier}</div>
+                    </div>
+                    <div>
+                      <span style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Starting Base Bid</span>
+                      <div style="font-family:var(--font-mono); font-size:1.35rem; font-weight:800; color:var(--accent-gold);">${basePtsNum.toLocaleString()} PTS</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:0.8rem; color:var(--text-secondary);">Tournament Pilot Dossier</span>
+                <button class="btn btn-outline btn-sm" onclick="window.app.inspectRacer('${currentRacer.id}')">
+                  View Full Card
+                </button>
+              </div>
             </div>
 
-            <div class="big-bid-container">
-              <span class="big-bid-label">Current Bid / Sale Price</span>
-              <div class="big-bid-amount">
-                ${activeAuction.currentBid.toLocaleString()}
-                <span class="bid-pts-unit">PTS</span>
-              </div>
-              <span class="bid-base-hint">Starting reserve: ${currentRacer.basePoints.toLocaleString()} PTS</span>
-            </div>
-
-            <!-- Leading Team Card -->
-            <div class="leading-team-card" style="border-left: 4px solid ${leadingTeam ? leadingTeam.color : 'var(--text-muted)'};">
-              <div class="leading-team-info">
-                <div class="team-logo-badge" style="border-color: ${leadingTeam ? leadingTeam.color : 'rgba(255,255,255,0.1)'}; color: ${leadingTeam ? leadingTeam.color : '#fff'}; overflow:hidden; display:flex; align-items:center; justify-content:center;">
-                  ${leadingTeam ? (leadingTeam.logoUrl ? `<img src="${leadingTeam.logoUrl}" style="width:100%; height:100%; object-fit:cover;">` : leadingTeam.logoIcon || '') : ''}
-                </div>
-                <div class="leading-team-meta">
-                  <span class="leading-label">${leadingTeam ? 'Currently Leading Bid' : 'Awaiting Bids'}</span>
-                  <span class="leading-team-name">${leadingTeam ? leadingTeam.name : 'No Team Assigned'}</span>
-                </div>
-              </div>
-              ${leadingTeam ? `
-                <div class="leading-team-purse">
-                  <div class="purse-remain-val">${leadingTeam.remainingPoints.toLocaleString()}</div>
-                  <div class="purse-remain-lbl">Pts Left</div>
+            <!-- 2. CENTER AUCTION STAGE -->
+            <div class="glass-card auction-stage-card">
+              ${activeAuction.status === 'sold' ? `
+                <div class="sold-overlay-box anim-sold-banner">
+                  <div class="sold-gavel-icon">🔨</div>
+                  <div class="sold-title">SOLD!</div>
+                  <div class="sold-subtitle">
+                    Acquired by <strong>${leadingTeam ? leadingTeam.name : 'Winning Team'}</strong> for <strong style="color:var(--accent-gold);">${currentBidNum.toLocaleString()} PTS</strong>
+                  </div>
+                  <button class="btn btn-gold" onclick="window.app.switchTab('teams-view')">View Standings</button>
                 </div>
               ` : ''}
+
+              <div class="stage-top-bar">
+                <span class="stage-title">Live Auction Floor</span>
+                <span class="section-tag" style="font-size:0.72rem; color:var(--accent-cyan);">CHAMPIONSHIP BLOCK</span>
+              </div>
+
+              <div class="big-bid-container">
+                <span class="big-bid-label">Current Bid / Sale Price</span>
+                <div class="big-bid-amount">
+                  ${currentBidNum.toLocaleString()}
+                  <span class="bid-pts-unit">PTS</span>
+                </div>
+                <span class="bid-base-hint">Starting reserve: ${basePtsNum.toLocaleString()} PTS</span>
+              </div>
+
+              <!-- Leading Team Card -->
+              <div class="leading-team-card" style="border-left: 4px solid ${leadingTeam ? leadingTeam.color : 'var(--text-muted)'};">
+                <div class="leading-team-info">
+                  <div class="team-logo-badge" style="border-color: ${leadingTeam ? leadingTeam.color : 'rgba(255,255,255,0.1)'}; color: ${leadingTeam ? leadingTeam.color : '#fff'}; overflow:hidden; display:flex; align-items:center; justify-content:center;">
+                    ${leadingTeam ? (leadingTeam.logoUrl ? `<img src="${leadingTeam.logoUrl}" style="width:100%; height:100%; object-fit:cover;">` : leadingTeam.logoIcon || '') : ''}
+                  </div>
+                  <div class="leading-team-meta">
+                    <span class="leading-label">${leadingTeam ? 'Currently Leading Bid' : 'Awaiting Bids'}</span>
+                    <span class="leading-team-name">${leadingTeam ? leadingTeam.name : 'No Team Assigned'}</span>
+                  </div>
+                </div>
+                ${leadingTeam ? `
+                  <div class="leading-team-purse">
+                    <div class="purse-remain-val">${(Number(leadingTeam.remainingPoints) || 0).toLocaleString()}</div>
+                    <div class="purse-remain-lbl">Pts Left</div>
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+
+            <!-- 3. LIVE BID STREAM -->
+            <div class="glass-card bid-feed-card">
+              <div class="feed-header">
+                <span class="feed-title">Live Bid Stream</span>
+                <span style="font-size: 0.72rem; color: var(--accent-cyan); font-family: var(--font-mono);">${bidHistory.length} BIDS</span>
+              </div>
+
+              <div class="feed-list">
+                ${bidHistory.length === 0 ? `
+                  <div class="feed-empty-state">
+                    <div style="font-size: 1.8rem; margin-bottom: 0.4rem;">📡</div>
+                    <div>Awaiting team bids...</div>
+                  </div>
+                ` : bidHistory.map((bid) => `
+                  <div class="feed-item" style="border-left-color: ${bid.teamColor || 'var(--accent-cyan)'};">
+                    <div class="feed-item-team">
+                      <div class="feed-team-dot" style="background: ${bid.teamColor || 'var(--accent-cyan)'};"></div>
+                      <div class="feed-team-name">${bid.teamName || 'Team'}</div>
+                    </div>
+                    <div class="feed-bid-meta">
+                      <div class="feed-bid-amount">${(Number(bid.amount) || 0).toLocaleString()} PTS</div>
+                      <div class="feed-bid-time">${bid.timestamp || ''}</div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
             </div>
           </div>
-
-          <!-- 3. LIVE BID STREAM -->
-          <div class="glass-card bid-feed-card">
-            <div class="feed-header">
-              <span class="feed-title">Live Bid Stream</span>
-              <span style="font-size: 0.72rem; color: var(--accent-cyan); font-family: var(--font-mono);">${activeAuction.bidHistory.length} BIDS</span>
-            </div>
-
-            <div class="feed-list">
-              ${activeAuction.bidHistory.length === 0 ? `
-                <div class="feed-empty-state">
-                  <div style="font-size: 1.8rem; margin-bottom: 0.4rem;">📡</div>
-                  <div>Awaiting team bids...</div>
-                </div>
-              ` : activeAuction.bidHistory.map((bid) => `
-                <div class="feed-item" style="border-left-color: ${bid.teamColor || 'var(--accent-cyan)'};">
-                  <div class="feed-item-team">
-                    <div class="feed-team-dot" style="background: ${bid.teamColor || 'var(--accent-cyan)'};"></div>
-                    <div class="feed-team-name">${bid.teamName}</div>
-                  </div>
-                  <div class="feed-bid-meta">
-                    <div class="feed-bid-amount">${bid.amount.toLocaleString()} PTS</div>
-                    <div class="feed-bid-time">${bid.timestamp}</div>
-                  </div>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        </div>
-      `;
-    }
+        `;
+      }
 
     // Bottom block: Bidded Racers Reel (Sold & Unsold)
     const historySectionHtml = `
@@ -388,7 +403,10 @@ class ViewerView {
       </div>
     `;
 
-    container.innerHTML = topStageHtml + historySectionHtml;
+      container.innerHTML = topStageHtml + historySectionHtml;
+    } catch (e) {
+      console.error('Error in renderLiveStage:', e);
+    }
   }
 
   // 2. Render Teams & Points Board
@@ -396,99 +414,110 @@ class ViewerView {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    const { teams, currentUser } = store.getState();
+    try {
+      const state = store.getState() || {};
+      const teams = Array.isArray(state.teams) ? state.teams : [];
+      const currentUser = state.currentUser || { isAuthenticated: false, role: 'viewer' };
 
-    if (teams.length === 0) {
-      container.innerHTML = `
-        <div style="grid-column: 1 / -1; text-align: center; padding: 4rem 1rem; color: var(--text-secondary); background: rgba(10,14,22,0.6); border-radius: var(--radius-lg); border: 1px dashed var(--border-subtle);">
-          <div style="font-size: 3rem; margin-bottom: 0.75rem;">🛡️</div>
-          <h3 style="font-family: var(--font-display); font-size: 1.35rem; margin-bottom: 0.4rem;">No Racing Teams Created Yet</h3>
-          <p style="font-size: 0.85rem; max-width: 460px; margin: 0 auto 1.5rem;">
-            Create your racing teams, upload their custom logos, assign purse budgets and driver roster slots.
-          </p>
-          ${currentUser.isAuthenticated ? `
-            <button class="btn btn-gold" onclick="window.app.openAddTeamModal()">
-              Add Your First Racing Team
-            </button>
-          ` : `
-            <button class="btn btn-outline" onclick="window.app.openAccessCodeModal()">
-              Admin Sign In to Add Teams
-            </button>
-          `}
-        </div>
-      `;
-      return;
-    }
-
-    container.innerHTML = teams.map((team) => {
-      const spent = team.startingPoints - team.remainingPoints;
-      const spentPct = Math.min(100, Math.round((team.remainingPoints / team.startingPoints) * 100));
-
-      return `
-        <div class="team-card" style="border-top: 3px solid ${team.color}; cursor:pointer;" onclick="window.app.openTeamModal('${team.id}')">
-          <div>
-            <div class="team-card-header">
-              <div class="team-brand">
-                <div class="team-avatar-icon" style="border-color: ${team.color}; box-shadow: 0 0 12px ${team.color}33; overflow:hidden; display:flex; align-items:center; justify-content:center; padding:0;">
-                  ${team.logoUrl ? `<img src="${team.logoUrl}" alt="${team.name}" style="width:100%; height:100%; object-fit:cover;">` : `<span>${team.logoIcon || ''}</span>`}
-                </div>
-                <div class="team-name-group">
-                  <span class="team-title">${team.name}</span>
-                </div>
-              </div>
-              <div style="display:flex; align-items:center; gap:0.35rem;">
-                <span class="section-tag" style="color: ${team.color}; border-color: ${team.color}55; background: ${team.color}15;">
-                  ${team.shortCode || 'TEAM'}
-                </span>
-                ${currentUser.isAuthenticated ? `
-                  <button type="button" class="btn btn-outline btn-sm" style="font-size:0.72rem; padding:0.25rem 0.45rem;" onclick="event.stopPropagation(); window.app.openEditTeamModal('${team.id}')" title="Edit Team">Edit</button>
-                  <button type="button" class="btn btn-danger btn-sm" style="font-size:0.72rem; padding:0.25rem 0.45rem;" onclick="event.stopPropagation(); window.app.handleDeleteTeam('${team.id}')" title="Delete Team">Delete</button>
-                ` : ''}
-              </div>
-            </div>
-
-            <!-- Points Purse Progress -->
-            <div class="team-points-box" style="margin-top: 1rem;">
-              <div class="points-row-top">
-                <div style="display:flex; flex-direction:column;">
-                  <span style="font-size:0.68rem; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Remaining Budget</span>
-                  <span class="pts-remaining-num" style="color:#ffffff;">${team.remainingPoints.toLocaleString()} PTS</span>
-                </div>
-                <span class="pts-total-num">Spent: ${spent.toLocaleString()} / ${team.startingPoints.toLocaleString()}</span>
-              </div>
-              <div class="points-progress-bar">
-                <div class="points-progress-fill" style="width: ${spentPct}%; background: linear-gradient(90deg, ${team.color}, ${team.accent || '#fff'});"></div>
-              </div>
-            </div>
+      if (teams.length === 0) {
+        container.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 4rem 1rem; color: var(--text-secondary); background: rgba(10,14,22,0.6); border-radius: var(--radius-lg); border: 1px dashed var(--border-subtle);">
+            <div style="font-size: 3rem; margin-bottom: 0.75rem;">🛡️</div>
+            <h3 style="font-family: var(--font-display); font-size: 1.35rem; margin-bottom: 0.4rem;">No Racing Teams Created Yet</h3>
+            <p style="font-size: 0.85rem; max-width: 460px; margin: 0 auto 1.5rem;">
+              Create your racing teams, upload their custom logos, assign purse budgets and driver roster slots.
+            </p>
+            ${currentUser.isAuthenticated ? `
+              <button class="btn btn-gold" onclick="window.app.openAddTeamModal()">
+                Add Your First Racing Team
+              </button>
+            ` : `
+              <button class="btn btn-outline" onclick="window.app.openAccessCodeModal()">
+                Admin Sign In to Add Teams
+              </button>
+            `}
           </div>
+        `;
+        return;
+      }
 
-          <!-- Roster Slot Preview -->
-          <div class="roster-summary-wrap">
-            <div class="roster-header-row">
-              <span>Driver Slots</span>
-              <span>${team.roster.length} / ${team.maxRoster} Signed</span>
+      container.innerHTML = teams.map((team) => {
+        if (!team) return '';
+        const startingPts = Number(team.startingPoints) || Number(team.budget) || 10000;
+        const remainingPts = Number(team.remainingPoints) !== undefined && !isNaN(Number(team.remainingPoints)) ? Number(team.remainingPoints) : startingPts;
+        const spent = Math.max(0, startingPts - remainingPts);
+        const spentPct = startingPts > 0 ? Math.min(100, Math.round((remainingPts / startingPts) * 100)) : 100;
+        const roster = Array.isArray(team.roster) ? team.roster : [];
+        const maxRoster = Number(team.maxRoster) || 4;
+
+        return `
+          <div class="team-card" style="border-top: 3px solid ${team.color || '#00f2fe'}; cursor:pointer;" onclick="window.app.openTeamModal('${team.id}')">
+            <div>
+              <div class="team-card-header">
+                <div class="team-brand">
+                  <div class="team-avatar-icon" style="border-color: ${team.color || '#00f2fe'}; box-shadow: 0 0 12px ${(team.color || '#00f2fe')}33; overflow:hidden; display:flex; align-items:center; justify-content:center; padding:0;">
+                    ${team.logoUrl ? `<img src="${team.logoUrl}" alt="${team.name || 'Team'}" style="width:100%; height:100%; object-fit:cover;">` : `<span>${team.logoIcon || '🏎️'}</span>`}
+                  </div>
+                  <div class="team-name-group">
+                    <span class="team-title">${team.name || 'Unnamed Team'}</span>
+                  </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:0.35rem;">
+                  <span class="section-tag" style="color: ${team.color || '#00f2fe'}; border-color: ${(team.color || '#00f2fe')}55; background: ${(team.color || '#00f2fe')}15;">
+                    ${team.shortCode || 'TEAM'}
+                  </span>
+                  ${currentUser.isAuthenticated ? `
+                    <button type="button" class="btn btn-outline btn-sm" style="font-size:0.72rem; padding:0.25rem 0.45rem;" onclick="event.stopPropagation(); window.app.openEditTeamModal('${team.id}')" title="Edit Team">Edit</button>
+                    <button type="button" class="btn btn-danger btn-sm" style="font-size:0.72rem; padding:0.25rem 0.45rem;" onclick="event.stopPropagation(); window.app.handleDeleteTeam('${team.id}')" title="Delete Team">Delete</button>
+                  ` : ''}
+                </div>
+              </div>
+
+              <!-- Points Purse Progress -->
+              <div class="team-points-box" style="margin-top: 1rem;">
+                <div class="points-row-top">
+                  <div style="display:flex; flex-direction:column;">
+                    <span style="font-size:0.68rem; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Remaining Budget</span>
+                    <span class="pts-remaining-num" style="color:#ffffff;">${remainingPts.toLocaleString()} PTS</span>
+                  </div>
+                  <span class="pts-total-num">Spent: ${spent.toLocaleString()} / ${startingPts.toLocaleString()}</span>
+                </div>
+                <div class="points-progress-bar">
+                  <div class="points-progress-fill" style="width: ${spentPct}%; background: linear-gradient(90deg, ${team.color || '#00f2fe'}, ${team.accent || '#fff'});"></div>
+                </div>
+              </div>
             </div>
-            <div class="roster-slots-row">
-              ${Array.from({ length: team.maxRoster }).map((_, idx) => {
-                const driver = team.roster[idx];
-                if (driver) {
+
+            <!-- Roster Slot Preview -->
+            <div class="roster-summary-wrap">
+              <div class="roster-header-row">
+                <span>Driver Slots</span>
+                <span>${roster.length} / ${maxRoster} Signed</span>
+              </div>
+              <div class="roster-slots-row">
+                ${Array.from({ length: maxRoster }).map((_, idx) => {
+                  const driver = roster[idx];
+                  if (driver) {
+                    return `
+                      <div class="slot-badge filled" title="${driver.name || 'Driver'} - ${(Number(driver.soldPoints) || 0).toLocaleString()} PTS">
+                        <span class="slot-driver-name">${driver.name || 'Driver'}</span>
+                      </div>
+                    `;
+                  }
                   return `
-                    <div class="slot-badge filled" title="${driver.name} - ${driver.soldPoints?.toLocaleString()} PTS">
-                      <span class="slot-driver-name">${driver.name}</span>
+                    <div class="slot-badge">
+                      <span>Slot ${idx + 1}</span>
                     </div>
                   `;
-                }
-                return `
-                  <div class="slot-badge">
-                    <span>Slot ${idx + 1}</span>
-                  </div>
-                `;
-              }).join('')}
+                }).join('')}
+              </div>
             </div>
           </div>
-        </div>
-      `;
-    }).join('');
+        `;
+      }).join('');
+    } catch (e) {
+      console.error('Error in renderTeamsGrid:', e);
+    }
   }
 
   // 3. Render Racers Directory
@@ -496,106 +525,116 @@ class ViewerView {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    const { racers, teams, currentUser } = store.getState();
+    try {
+      const state = store.getState() || {};
+      const racers = Array.isArray(state.racers) ? state.racers : [];
+      const teams = Array.isArray(state.teams) ? state.teams : [];
+      const currentUser = state.currentUser || { isAuthenticated: false, role: 'viewer' };
 
-    // Filter racers
-    let filtered = racers.filter((r) => {
-      const racerTier = r.tier || r.category || 'Tier S';
-      const matchCat = this.currentCategoryFilter === 'All Tiers' || this.currentCategoryFilter === 'All Categories' || racerTier === this.currentCategoryFilter || racerTier.includes(this.currentCategoryFilter) || this.currentCategoryFilter.includes(racerTier);
-      const matchStatus = this.currentStatusFilter === 'all' || r.status === this.currentStatusFilter;
-      const matchSearch = !this.searchQuery || r.name.toLowerCase().includes(this.searchQuery.toLowerCase()) || racerTier.toLowerCase().includes(this.searchQuery.toLowerCase());
-      return matchCat && matchStatus && matchSearch;
-    });
+      // Filter racers
+      let filtered = racers.filter((r) => {
+        if (!r) return false;
+        const racerTier = String(r.tier || r.category || 'Tier S');
+        const matchCat = this.currentCategoryFilter === 'All Tiers' || this.currentCategoryFilter === 'All Categories' || racerTier === this.currentCategoryFilter || racerTier.includes(this.currentCategoryFilter) || this.currentCategoryFilter.includes(racerTier);
+        const matchStatus = this.currentStatusFilter === 'all' || r.status === this.currentStatusFilter;
+        const matchSearch = !this.searchQuery || String(r.name || '').toLowerCase().includes(this.searchQuery.toLowerCase()) || racerTier.toLowerCase().includes(this.searchQuery.toLowerCase());
+        return matchCat && matchStatus && matchSearch;
+      });
 
-    if (racers.length === 0) {
-      container.innerHTML = `
-        <div style="grid-column: 1 / -1; text-align: center; padding: 4rem 1rem; color: var(--text-secondary); background: rgba(10,14,22,0.6); border-radius: var(--radius-lg); border: 1px dashed var(--border-subtle);">
-          <div style="font-size: 3rem; margin-bottom: 0.75rem;">🏎️</div>
-          <h3 style="font-family: var(--font-display); font-size: 1.35rem; margin-bottom: 0.4rem;">No Racers in the Pool</h3>
-          <p style="font-size: 0.85rem; max-width: 460px; margin: 0 auto 1.5rem;">
-            Add racers with their custom photo, name, assigned tier (S, A, B, C, D), and starting bid.
-          </p>
-          ${currentUser.isAuthenticated ? `
-            <button class="btn btn-cyan" onclick="window.app.openAddRacerModal()">
-              Add Your First Racer
-            </button>
-          ` : `
-            <button class="btn btn-outline" onclick="window.app.openAccessCodeModal()">
-              Admin Sign In to Add Racers
-            </button>
-          `}
-        </div>
-      `;
-      return;
-    }
-
-    if (filtered.length === 0) {
-      container.innerHTML = `
-        <div style="grid-column: 1 / -1; text-align: center; padding: 3rem 1rem; color: var(--text-secondary);">
-          <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🔍</div>
-          <h3 style="font-family: var(--font-display); margin-bottom: 0.3rem;">No Racers Found</h3>
-          <p style="font-size: 0.85rem;">Try changing your search keywords or tier filter pills.</p>
-        </div>
-      `;
-      return;
-    }
-
-    container.innerHTML = filtered.map((racer) => {
-      const photoSrc = racer.photoUrl || racer.avatar;
-      const soldTeam = racer.soldToTeamId ? teams.find((t) => t.id === racer.soldToTeamId) : null;
-      const racerTier = racer.tier || racer.category || 'Tier S';
-      const tierCode = racerTier.replace('Tier ', '').trim().toLowerCase();
-
-      return `
-        <div class="racer-card">
-          <div class="racer-card-image-box">
-            <span class="racer-card-cat-badge tier-badge-${tierCode}">${racerTier}</span>
-            <span class="racer-status-badge badge-${racer.status} racer-card-status-badge">${racer.status}</span>
-            <img src="${photoSrc}" alt="${racer.name}" class="racer-card-img">
-          </div>
-
-          <div class="racer-card-body">
-            <div>
-              <div class="racer-card-name">${racer.name}</div>
-              <div class="racer-card-nat">${racerTier}</div>
-            </div>
-
-            <div class="racer-card-meta-row">
-              <div>
-                <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase;">
-                  ${racer.status === 'sold' ? 'Sold Price' : 'Starting Bid'}
-                </div>
-                <div class="racer-base-cost">
-                  ${(racer.soldPoints || racer.basePoints).toLocaleString()} PTS
-                </div>
-              </div>
-              ${soldTeam ? `
-                <div style="text-align: right;">
-                  <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase;">Signed Team</div>
-                  <div class="racer-sold-team-tag" style="color:${soldTeam.color};">${soldTeam.name}</div>
-                </div>
-              ` : ''}
-            </div>
-
-            <div class="racer-card-actions">
-              ${currentUser.isAuthenticated && racer.status !== 'sold' && racer.status !== 'live' ? `
-                <button class="btn btn-cyan btn-sm" style="flex:1; font-size:0.72rem; padding:0.45rem;" onclick="window.app.startAuctionForRacer('${racer.id}')">
-                  Put on Block
-                </button>
-              ` : ''}
-              <button class="btn btn-outline btn-sm" style="flex:1; font-size:0.72rem; padding:0.45rem;" onclick="window.app.inspectRacer('${racer.id}')">
-                Inspect
+      if (racers.length === 0) {
+        container.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 4rem 1rem; color: var(--text-secondary); background: rgba(10,14,22,0.6); border-radius: var(--radius-lg); border: 1px dashed var(--border-subtle);">
+            <div style="font-size: 3rem; margin-bottom: 0.75rem;">🏎️</div>
+            <h3 style="font-family: var(--font-display); font-size: 1.35rem; margin-bottom: 0.4rem;">No Racers in the Pool</h3>
+            <p style="font-size: 0.85rem; max-width: 460px; margin: 0 auto 1.5rem;">
+              Add racers with their custom photo, name, assigned tier (S, A, B, C, D), and starting bid.
+            </p>
+            ${currentUser.isAuthenticated ? `
+              <button class="btn btn-cyan" onclick="window.app.openAddRacerModal()">
+                Add Your First Racer
               </button>
-              ${currentUser.isAuthenticated ? `
-                <button class="btn btn-outline btn-sm" style="font-size:0.72rem; padding:0.45rem 0.65rem;" onclick="window.app.openEditRacerModal('${racer.id}')" title="Edit Racer">
-                  Edit
+            ` : `
+              <button class="btn btn-outline" onclick="window.app.openAccessCodeModal()">
+                Admin Sign In to Add Racers
+              </button>
+            `}
+          </div>
+        `;
+        return;
+      }
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 3rem 1rem; color: var(--text-secondary);">
+            <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🔍</div>
+            <h3 style="font-family: var(--font-display); margin-bottom: 0.3rem;">No Racers Found</h3>
+            <p style="font-size: 0.85rem;">Try changing your search keywords or tier filter pills.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map((racer) => {
+        if (!racer) return '';
+        const photoSrc = racer.photoUrl || racer.avatar || 'assets/avatars/default.png';
+        const soldTeam = racer.soldToTeamId ? teams.find((t) => t && t.id === racer.soldToTeamId) : null;
+        const racerTier = String(racer.tier || racer.category || 'Tier S');
+        const tierCode = racerTier.replace('Tier ', '').trim().toLowerCase();
+        const ptsDisplay = (Number(racer.soldPoints) || Number(racer.basePoints) || 0).toLocaleString();
+
+        return `
+          <div class="racer-card">
+            <div class="racer-card-image-box">
+              <span class="racer-card-cat-badge tier-badge-${tierCode}">${racerTier}</span>
+              <span class="racer-status-badge badge-${racer.status || 'upcoming'} racer-card-status-badge">${racer.status || 'upcoming'}</span>
+              <img src="${photoSrc}" alt="${racer.name || 'Racer'}" class="racer-card-img">
+            </div>
+
+            <div class="racer-card-body">
+              <div>
+                <div class="racer-card-name">${racer.name || 'Unnamed Pilot'}</div>
+                <div class="racer-card-nat">${racerTier}</div>
+              </div>
+
+              <div class="racer-card-meta-row">
+                <div>
+                  <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase;">
+                    ${racer.status === 'sold' ? 'Sold Price' : 'Starting Bid'}
+                  </div>
+                  <div class="racer-base-cost">
+                    ${ptsDisplay} PTS
+                  </div>
+                </div>
+                ${soldTeam ? `
+                  <div style="text-align: right;">
+                    <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase;">Signed Team</div>
+                    <div class="racer-sold-team-tag" style="color:${soldTeam.color || '#fff'};">${soldTeam.name || 'Team'}</div>
+                  </div>
+                ` : ''}
+              </div>
+
+              <div class="racer-card-actions">
+                ${currentUser.isAuthenticated && racer.status !== 'sold' && racer.status !== 'live' ? `
+                  <button class="btn btn-cyan btn-sm" style="flex:1; font-size:0.72rem; padding:0.45rem;" onclick="window.app.startAuctionForRacer('${racer.id}')">
+                    Put on Block
+                  </button>
+                ` : ''}
+                <button class="btn btn-outline btn-sm" style="flex:1; font-size:0.72rem; padding:0.45rem;" onclick="window.app.inspectRacer('${racer.id}')">
+                  Inspect
                 </button>
-              ` : ''}
+                ${currentUser.isAuthenticated ? `
+                  <button class="btn btn-outline btn-sm" style="font-size:0.72rem; padding:0.45rem 0.65rem;" onclick="window.app.openEditRacerModal('${racer.id}')" title="Edit Racer">
+                    Edit
+                  </button>
+                ` : ''}
+              </div>
             </div>
           </div>
-        </div>
-      `;
-    }).join('');
+        `;
+      }).join('');
+    } catch (e) {
+      console.error('Error in renderRacersGrid:', e);
+    }
   }
 
   // 4. Render Team Details Modal

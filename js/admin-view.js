@@ -27,127 +27,147 @@ class AdminView {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    const state = store.getState();
-    const { activeAuction, racers, teams, currentUser } = state;
-    const currentRacer = racers.find((r) => r.id === activeAuction.racerId);
-    const upcomingRacers = racers.filter((r) => r.status === 'upcoming' || r.status === 'unsold');
+    try {
+      const state = store.getState() || {};
+      const racers = Array.isArray(state.racers) ? state.racers : [];
+      const teams = Array.isArray(state.teams) ? state.teams : [];
+      const currentUser = state.currentUser || { isAuthenticated: false, role: 'super_admin', adminName: 'Admin' };
+      const activeAuction = state.activeAuction || {
+        racerId: null,
+        currentBid: 0,
+        leadingTeamId: null,
+        bidHistory: [],
+        timerSeconds: 30,
+        isTimerRunning: false,
+        status: 'idle'
+      };
+      const currentRacer = activeAuction.racerId ? racers.find((r) => r && r.id === activeAuction.racerId) : null;
+      const upcomingRacers = racers.filter((r) => r && (r.status === 'upcoming' || r.status === 'unsold'));
+      const activePriceNum = Number(activeAuction.currentBid) || (currentRacer ? Number(currentRacer.basePoints) : 0);
 
-    container.innerHTML = `
-      <!-- Admin Action Bar -->
-      <div class="admin-actions-toolbar">
-        <button class="btn btn-cyan" onclick="window.app.openAddRacerModal()">
-          Add New Racer
-        </button>
-        <button class="btn btn-outline" onclick="window.app.openAddTeamModal()">
-          Add Team
-        </button>
-        <button class="btn btn-outline" onclick="window.app.openSettingsModal()">
-          Data & Backup
-        </button>
-      </div>
+      container.innerHTML = `
+        <!-- Admin Action Bar -->
+        <div class="admin-actions-toolbar">
+          <button class="btn btn-cyan" onclick="window.app.openAddRacerModal()">
+            Add New Racer
+          </button>
+          <button class="btn btn-outline" onclick="window.app.openAddTeamModal()">
+            Add Team
+          </button>
+          <button class="btn btn-outline" onclick="window.app.openSettingsModal()">
+            Data & Backup
+          </button>
+        </div>
 
-      <div class="admin-control-grid">
-        <!-- LEFT: Live Auctioneer Console -->
-        <div class="glass-card operator-card" style="border-top: 3px solid var(--accent-red);">
-          <div class="section-header" style="margin-bottom:0.5rem;">
-            <div class="section-title-wrap">
-              <span class="section-tag">LIVE OP</span>
-              <h3 class="section-title" style="font-size:1.15rem;">Live Auction & Settlement Hub</h3>
-            </div>
-            ${currentRacer ? `<span class="racer-status-badge badge-${activeAuction.status}">${activeAuction.status}</span>` : ''}
-          </div>
-
-          <!-- Select Racer on Block -->
-          <div class="control-field-group">
-            <label class="control-label">Racer On Auction Block</label>
-            <div style="display:flex; gap:0.5rem;">
-              <select id="admin-racer-select" class="form-select">
-                <option value="">-- Choose a Racer to Put on Block --</option>
-                ${upcomingRacers.map((r) => `
-                  <option value="${r.id}" ${currentRacer && currentRacer.id === r.id ? 'selected' : ''}>
-                    ${r.name} (${r.tier || r.category || 'Tier S'}) - Starting: ${r.basePoints} PTS
-                  </option>
-                `).join('')}
-              </select>
-              <button class="btn btn-primary" onclick="window.app.handleAdminStartAuction()">
-                Put on Block
-              </button>
-            </div>
-          </div>
-
-          ${currentRacer ? `
-            <div style="background:rgba(10,14,22,0.85); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border-subtle); display:flex; gap:1rem; align-items:center;">
-              <img src="${currentRacer.photoUrl || currentRacer.avatar}" style="width:65px; height:65px; border-radius:var(--radius-md); object-fit:cover; border:2px solid var(--accent-cyan);">
-              <div style="flex:1;">
-                <div style="font-family:var(--font-display); font-size:1.15rem; font-weight:800; color:#fff;">${currentRacer.name}</div>
-                <div style="font-size:0.8rem; color:var(--accent-cyan); font-weight:700;">${currentRacer.tier || currentRacer.category || 'Tier S'} • Reserve: ${currentRacer.basePoints.toLocaleString()} PTS</div>
-                <div style="font-family:var(--font-mono); font-size:1.15rem; font-weight:700; color:#fff; margin-top:0.2rem;">
-                  Current Price: <span style="color:var(--accent-gold); font-weight:900;">${activeAuction.currentBid.toLocaleString()} PTS</span>
-                </div>
+        <div class="admin-control-grid">
+          <!-- LEFT: Live Auctioneer Console -->
+          <div class="glass-card operator-card" style="border-top: 3px solid var(--accent-red);">
+            <div class="section-header" style="margin-bottom:0.5rem;">
+              <div class="section-title-wrap">
+                <span class="section-tag">LIVE OP</span>
+                <h3 class="section-title" style="font-size:1.15rem;">Live Auction & Settlement Hub</h3>
               </div>
+              ${currentRacer ? `<span class="racer-status-badge badge-${activeAuction.status || 'upcoming'}">${activeAuction.status || 'upcoming'}</span>` : ''}
             </div>
 
-            <!-- Bidding & Settlement Controls -->
-            <div style="background:rgba(14,19,30,0.85); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border-cyan); display:flex; flex-direction:column; gap:0.85rem; margin-top:0.5rem;">
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-size:0.8rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; letter-spacing:1px;">
-                  Settle Auction & Deduct Budget
-                </span>
-                <span style="font-size:0.75rem; color:var(--text-muted);">${teams.length} Teams Available</span>
-              </div>
-
-              <div class="control-field-group">
-                <label class="control-label">Winning / Bidding Team</label>
-                <select id="admin-bid-team-select" class="form-select">
-                  <option value="">-- Select Team --</option>
-                  ${teams.map((t) => `
-                    <option value="${t.id}" ${activeAuction.leadingTeamId === t.id ? 'selected' : ''}>
-                      ${t.name} (Budget Left: ${t.remainingPoints.toLocaleString()} PTS, Slots: ${t.roster.length}/${t.maxRoster})
+            <!-- Select Racer on Block -->
+            <div class="control-field-group">
+              <label class="control-label">Racer On Auction Block</label>
+              <div style="display:flex; gap:0.5rem;">
+                <select id="admin-racer-select" class="form-select">
+                  <option value="">-- Choose a Racer to Put on Block --</option>
+                  ${upcomingRacers.map((r) => `
+                    <option value="${r.id}" ${currentRacer && currentRacer.id === r.id ? 'selected' : ''}>
+                      ${r.name || 'Racer'} (${r.tier || r.category || 'Tier S'}) - Starting: ${(Number(r.basePoints) || 0).toLocaleString()} PTS
                     </option>
                   `).join('')}
                 </select>
-              </div>
-
-              <!-- Price & Quick Increments -->
-              <div class="control-field-group">
-                <label class="control-label">Final Sale / Bid Amount (PTS)</label>
-                <div class="custom-bid-row">
-                  <input type="number" id="admin-custom-bid-input" class="form-input" placeholder="e.g. 2500" value="${activeAuction.currentBid || currentRacer.basePoints}">
-                  <button class="btn btn-cyan" onclick="window.app.handleCustomBid()">Set Price</button>
-                </div>
-              </div>
-
-              <!-- Quick Increments -->
-              <div class="control-field-group">
-                <label class="control-label">Quick Adjust (+ PTS)</label>
-                <div class="increments-grid">
-                  <button class="btn-increment" onclick="window.app.handleQuickBid(100)">+100</button>
-                  <button class="btn-increment" onclick="window.app.handleQuickBid(250)">+250</button>
-                  <button class="btn-increment" onclick="window.app.handleQuickBid(500)">+500</button>
-                  <button class="btn-increment" onclick="window.app.handleQuickBid(1000)">+1000</button>
-                </div>
-              </div>
-
-              <!-- Settlement Action Buttons -->
-              <div class="auctioneer-gavel-actions" style="margin-top:0.25rem;">
-                <button class="btn btn-gold" style="flex:2; font-size:0.95rem; font-weight:800; padding:0.75rem;" onclick="window.app.handleSold()">
-                  Mark SOLD (Deduct Points)
-                </button>
-                <button class="btn btn-outline" style="flex:1;" onclick="window.app.handleUnsold()">
-                  Mark UNSOLD
-                </button>
-                <button class="btn btn-danger" style="flex:0.8;" onclick="window.app.handleCancelAuction()">
-                  Clear Block
+                <button class="btn btn-primary" onclick="window.app.handleAdminStartAuction()">
+                  Put on Block
                 </button>
               </div>
             </div>
-          ` : `
-            <div style="text-align:center; padding:3rem 1rem; color:var(--text-muted);">
-              <div style="font-size:2.5rem; margin-bottom:0.5rem;">🏁</div>
-              <div style="font-weight:700; color:#fff; margin-bottom:0.25rem;">No Racer on the Auction Block</div>
-              <div style="font-size:0.85rem;">Select an upcoming racer from the dropdown above to begin live bidding or instant settlement.</div>
-            </div>
-          `}
+
+            ${currentRacer ? `
+              <div style="background:rgba(10,14,22,0.85); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border-subtle); display:flex; gap:1rem; align-items:center; margin-top:0.75rem;">
+                <img src="${currentRacer.photoUrl || currentRacer.avatar || 'assets/avatars/default.png'}" style="width:65px; height:65px; border-radius:var(--radius-md); object-fit:cover; border:2px solid var(--accent-cyan);">
+                <div style="flex:1;">
+                  <div style="font-family:var(--font-display); font-size:1.15rem; font-weight:800; color:#fff;">${currentRacer.name || 'Unnamed Racer'}</div>
+                  <div style="font-size:0.8rem; color:var(--accent-cyan); font-weight:700;">${currentRacer.tier || currentRacer.category || 'Tier S'} • Reserve: ${(Number(currentRacer.basePoints) || 0).toLocaleString()} PTS</div>
+                  <div style="font-family:var(--font-mono); font-size:1.15rem; font-weight:700; color:#fff; margin-top:0.2rem;">
+                    Current Price: <span style="color:var(--accent-gold); font-weight:900;">${activePriceNum.toLocaleString()} PTS</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Bidding & Settlement Controls -->
+              <div style="background:rgba(14,19,30,0.85); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border-cyan); display:flex; flex-direction:column; gap:0.85rem; margin-top:0.75rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span style="font-size:0.8rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; letter-spacing:1px;">
+                    Settle Auction & Deduct Budget
+                  </span>
+                  <span style="font-size:0.75rem; color:var(--text-muted);">${teams.length} Teams Available</span>
+                </div>
+
+                <div class="control-field-group">
+                  <label class="control-label">Winning / Bidding Team</label>
+                  <select id="admin-bid-team-select" class="form-select">
+                    <option value="">-- Select Team --</option>
+                    ${teams.map((t) => {
+                      if (!t) return '';
+                      const remaining = Number(t.remainingPoints) !== undefined && !isNaN(Number(t.remainingPoints)) ? Number(t.remainingPoints) : (Number(t.startingPoints) || 10000);
+                      const rosterLen = Array.isArray(t.roster) ? t.roster.length : 0;
+                      const maxSlots = Number(t.maxRoster) || 4;
+                      return `
+                        <option value="${t.id}" ${activeAuction.leadingTeamId === t.id ? 'selected' : ''}>
+                          ${t.name || 'Team'} (Budget Left: ${remaining.toLocaleString()} PTS, Slots: ${rosterLen}/${maxSlots})
+                        </option>
+                      `;
+                    }).join('')}
+                  </select>
+                </div>
+
+                <!-- Price & Quick Increments -->
+                <div class="control-field-group">
+                  <label class="control-label">Final Sale / Bid Amount (PTS)</label>
+                  <div class="custom-bid-row">
+                    <input type="number" id="admin-custom-bid-input" class="form-input" placeholder="e.g. 2500" value="${activePriceNum}">
+                    <button class="btn btn-cyan" onclick="window.app.handleCustomBid()">Set Price</button>
+                  </div>
+                </div>
+
+                <!-- Quick Increments -->
+                <div class="control-field-group">
+                  <label class="control-label">Quick Adjust (+ PTS)</label>
+                  <div class="increments-grid">
+                    <button class="btn-increment" onclick="window.app.handleQuickBid(100)">+100</button>
+                    <button class="btn-increment" onclick="window.app.handleQuickBid(250)">+250</button>
+                    <button class="btn-increment" onclick="window.app.handleQuickBid(500)">+500</button>
+                    <button class="btn-increment" onclick="window.app.handleQuickBid(1000)">+1000</button>
+                  </div>
+                </div>
+
+                <!-- Settlement Action Buttons -->
+                <div class="auctioneer-gavel-actions" style="margin-top:0.25rem;">
+                  <button class="btn btn-gold" style="flex:2; font-size:0.95rem; font-weight:800; padding:0.75rem;" onclick="window.app.handleSold()">
+                    Mark SOLD (Deduct Points)
+                  </button>
+                  <button class="btn btn-outline" style="flex:1;" onclick="window.app.handleUnsold()">
+                    Mark UNSOLD
+                  </button>
+                  <button class="btn btn-danger" style="flex:0.8;" onclick="window.app.handleCancelAuction()">
+                    Clear Block
+                  </button>
+                </div>
+              </div>
+            ` : `
+              <div style="text-align:center; padding:2.5rem 1rem; color:var(--text-secondary); background:rgba(10,14,22,0.4); border-radius:var(--radius-md); border:1px dashed var(--border-subtle); margin-top:0.75rem;">
+                <div style="font-size:2rem; margin-bottom:0.4rem;">🏁</div>
+                <div style="font-size:0.9rem; font-weight:700; color:#fff;">No Driver on Auction Block</div>
+                <div style="font-size:0.78rem; color:var(--text-muted); margin-top:0.25rem;">Select an upcoming driver from the dropdown above and click "Put on Block".</div>
+              </div>
+            `}
+          </div>
         </div>
 
         <!-- RIGHT: Quick Roster & Management Overview -->
@@ -291,6 +311,9 @@ class AdminView {
         </div>
       </div>
     `;
+    } catch (e) {
+      console.error('Error in renderAdminDesk:', e);
+    }
   }
 
   openCreateAccessCodeModal() {
