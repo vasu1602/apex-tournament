@@ -6,9 +6,10 @@ class ChampionshipView {
     this.selectedMatchId = null;
     this.selectedRoundId = null;
     this.activeGameIndex = 0; // 0 = Race 1, 1 = Race 2, 2 = Race 3, etc.
-    this.localPositions = {}; // Local positions for active race
+    this.localPositions = {}; // Local positions for active race in admin
     this.sortByRank = false;
-    this.expandedTeamKey = null; // for viewer drill-down on team click: `${matchId}_${teamId}`
+    this.viewerExpandedMatches = new Set(); // Set of matchIds currently expanded
+    this.viewerSelectedRaces = {}; // { [matchId]: raceIndex }
   }
 
   init() {
@@ -51,19 +52,25 @@ class ChampionshipView {
     this.saveCurrentMatchScoring(true);
   }
 
-  toggleTeamRosterExpand(matchId, teamId) {
-    const key = `${matchId}_${teamId}`;
-    if (this.expandedTeamKey === key) {
-      this.expandedTeamKey = null;
+  toggleViewerMatchExpand(matchId) {
+    if (this.viewerExpandedMatches.has(matchId)) {
+      this.viewerExpandedMatches.delete(matchId);
     } else {
-      this.expandedTeamKey = key;
+      this.viewerExpandedMatches.add(matchId);
+      if (this.viewerSelectedRaces[matchId] === undefined) {
+        this.viewerSelectedRaces[matchId] = 0;
+      }
     }
+    this.renderChampionshipView();
+  }
+
+  setViewerSelectedRace(matchId, raceIdx) {
+    this.viewerSelectedRaces[matchId] = raceIdx;
     this.renderChampionshipView();
   }
 
   handlePositionChange(driverKey, newPos) {
     this.localPositions[driverKey] = newPos;
-    // Auto-update match scoring in real time
     this.saveCurrentMatchScoring(false);
   }
 
@@ -92,7 +99,6 @@ class ChampionshipView {
     const maxGames = this.getMaxGamesForFormat(format);
     const games = Array.isArray(currentMatch.games) ? [...currentMatch.games] : [];
 
-    // Ensure games array length up to activeGameIndex + 1
     while (games.length <= this.activeGameIndex) {
       games.push({
         gameNumber: games.length + 1,
@@ -104,7 +110,6 @@ class ChampionshipView {
       });
     }
 
-    // Merge local positions into active game
     const currentGame = games[this.activeGameIndex] || {
       gameNumber: this.activeGameIndex + 1,
       driverPositions: {},
@@ -119,7 +124,6 @@ class ChampionshipView {
       ...this.localPositions
     };
 
-    // Calculate scores for this active game
     let gameScore1 = 0;
     crew1Drivers.forEach((d) => {
       const key = `${team1.id}_${d.id || d.name}`;
@@ -146,7 +150,6 @@ class ChampionshipView {
 
     games[this.activeGameIndex] = currentGame;
 
-    // Calculate Series Totals across all games
     let seriesWins1 = 0;
     let seriesWins2 = 0;
     let totalScore1 = 0;
@@ -159,7 +162,6 @@ class ChampionshipView {
       else if (g.winnerTeamId === team2.id || g.team2Score > g.team1Score) seriesWins2 += 1;
     });
 
-    // Overall series winner
     let overallWinnerTeamId = currentMatch.winnerTeamId || null;
     const winsNeeded = format === 'bo5' ? 3 : (format === 'bo3' ? 2 : 1);
 
@@ -315,7 +317,6 @@ class ChampionshipView {
         maxGames = this.getMaxGamesForFormat(format);
         games = Array.isArray(activeMatch.games) ? activeMatch.games : [];
 
-        // Active game lookup
         currentGame = games[this.activeGameIndex] || {
           gameNumber: this.activeGameIndex + 1,
           driverPositions: activeMatch.driverPositions || {},
@@ -325,7 +326,6 @@ class ChampionshipView {
 
         const mergedPositions = { ...(currentGame.driverPositions || {}), ...this.localPositions };
 
-        // Compute scores for current race
         crew1Drivers.forEach((d) => {
           const key = `${team1.id}_${d.id || d.name}`;
           const pos = mergedPositions[key] || '';
@@ -338,13 +338,11 @@ class ChampionshipView {
           activeGameScore2 += this.getPointsForPosition(pos);
         });
 
-        // Compute series cumulative stats
         seriesWins1 = Number(activeMatch.seriesWins1) || 0;
         seriesWins2 = Number(activeMatch.seriesWins2) || 0;
         totalScore1 = Number(activeMatch.totalScore1) || activeGameScore1;
         totalScore2 = Number(activeMatch.totalScore2) || activeGameScore2;
 
-        // Apply auto-sort if active
         if (this.sortByRank) {
           const getRankOrder = (pos) => {
             if (!pos) return 999;
@@ -367,7 +365,6 @@ class ChampionshipView {
         }
       }
 
-      // Compute global tournament standings
       const standingsMap = {};
       teams.forEach(t => {
         standingsMap[t.id] = {
@@ -546,7 +543,6 @@ class ChampionshipView {
 
                       return `
                         <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(18,23,36,0.6); padding:0.55rem 0.75rem; border-radius:var(--radius-md); border:1px solid rgba(255,255,255,0.05); gap:0.5rem;">
-                          <!-- Driver Identity -->
                           <div style="display:flex; align-items:center; gap:0.5rem; flex:1; min-width:0;">
                             <span style="font-size:1rem;">🏎️</span>
                             <span style="font-family:var(--font-display); font-weight:700; font-size:0.9rem; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">
@@ -554,7 +550,6 @@ class ChampionshipView {
                             </span>
                           </div>
 
-                          <!-- Position Select & Points -->
                           <div style="display:flex; align-items:center; gap:0.6rem;">
                             <select class="form-select" style="padding:0.25rem 0.5rem; font-size:0.8rem; font-weight:700; width:130px; background:rgba(10,14,22,0.9);" onchange="window.championshipView.handlePositionChange('${driverKey}', this.value)" ${activeMatch.isLocked ? 'disabled' : ''}>
                               ${positionOptions.map(opt => `
@@ -607,7 +602,6 @@ class ChampionshipView {
 
                       return `
                         <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(18,23,36,0.6); padding:0.55rem 0.75rem; border-radius:var(--radius-md); border:1px solid rgba(255,255,255,0.05); gap:0.5rem;">
-                          <!-- Driver Identity -->
                           <div style="display:flex; align-items:center; gap:0.5rem; flex:1; min-width:0;">
                             <span style="font-size:1rem;">🏎️</span>
                             <span style="font-family:var(--font-display); font-weight:700; font-size:0.9rem; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">
@@ -615,7 +609,6 @@ class ChampionshipView {
                             </span>
                           </div>
 
-                          <!-- Position Select & Points -->
                           <div style="display:flex; align-items:center; gap:0.6rem;">
                             <select class="form-select" style="padding:0.25rem 0.5rem; font-size:0.8rem; font-weight:700; width:130px; background:rgba(10,14,22,0.9);" onchange="window.championshipView.handlePositionChange('${driverKey}', this.value)" ${activeMatch.isLocked ? 'disabled' : ''}>
                               ${positionOptions.map(opt => `
@@ -664,11 +657,11 @@ class ChampionshipView {
         `;
       }
 
-      // 2. VIEWER MATCH-UPS & SERIES CARDS WITH TAP-TO-EXPAND ROSTER POINTS
+      // 2. VIEWER MATCH-UPS & SERIES CARDS WITH TAP-TO-INSPECT RACES AND CAPSULE RACER POINTS
       let viewerMatchCardsHtml = '';
       if (tournamentMatchups.length > 0) {
         viewerMatchCardsHtml = `
-          <!-- TOURNAMENT MATCHES (TAP TEAM NAME FOR RACER POINTS) -->
+          <!-- TOURNAMENT MATCHES (TAP TO INSPECT RACES & RACER POINTS) -->
           <div class="glass-card" style="border-top: 3px solid var(--accent-cyan); width: 100%; padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem;">
             <div class="section-header" style="margin-bottom:0.25rem;">
               <div class="section-title-wrap">
@@ -681,7 +674,7 @@ class ChampionshipView {
             </div>
 
             <p style="font-size:0.82rem; color:var(--text-secondary); margin:0 0 0.5rem;">
-              💡 <strong>Tip:</strong> Tap on any team's name to view the detailed driver-by-driver points and finishing positions breakdown.
+              💡 <strong>Tip:</strong> Tap on any match-up card or team name to view the races and inspect individual racer finishing points.
             </p>
 
             <div style="display:flex; flex-direction:column; gap:1.25rem;">
@@ -691,17 +684,44 @@ class ChampionshipView {
                 const matchFmt = (match.seriesFormat || 'bo3').toUpperCase();
                 const mMaxGames = this.getMaxGamesForFormat(match.seriesFormat || 'bo3');
                 const mGames = Array.isArray(match.games) ? match.games : [];
-                const mWins1 = Number(match.seriesWins1) || 0;
-                const mWins2 = Number(match.seriesWins2) || 0;
                 const mTotalPts1 = Number(match.totalScore1) || Number(match.team1Score) || 0;
                 const mTotalPts2 = Number(match.totalScore2) || Number(match.team2Score) || 0;
-                const isT1Expanded = this.expandedTeamKey === `${match.id}_${t1.id}`;
-                const isT2Expanded = this.expandedTeamKey === `${match.id}_${t2.id}`;
+                const isExpanded = this.viewerExpandedMatches.has(match.id);
+                const currentViewerRaceIdx = this.viewerSelectedRaces[match.id] || 0;
+
+                // Determine how many races are available to view (at least 1, or up to maxGames if updated)
+                const scoredRacesCount = Math.max(1, Math.min(mMaxGames, mGames.length > 0 ? mGames.length : 1));
+                const activeRaceGame = mGames[currentViewerRaceIdx] || { driverPositions: {}, team1Score: 0, team2Score: 0 };
+                const activeRacePositions = activeRaceGame.driverPositions || {};
+
+                // Get Drivers and sort by finish position in the currently selected race
+                const getRankOrder = (pos) => {
+                  if (!pos) return 999;
+                  if (pos === 'DNF') return 900;
+                  const num = parseInt(pos.replace(/\D/g, ''), 10);
+                  return isNaN(num) ? 999 : num;
+                };
+
                 const t1Drivers = this.getTeamDrivers(t1, racers);
                 const t2Drivers = this.getTeamDrivers(t2, racers);
 
+                const t1DriversSorted = [...t1Drivers].sort((a, b) => {
+                  const posA = activeRacePositions[`${t1.id}_${a.id || a.name}`] || '';
+                  const posB = activeRacePositions[`${t1.id}_${b.id || b.name}`] || '';
+                  return getRankOrder(posA) - getRankOrder(posB);
+                });
+
+                const t2DriversSorted = [...t2Drivers].sort((a, b) => {
+                  const posA = activeRacePositions[`${t2.id}_${a.id || a.name}`] || '';
+                  const posB = activeRacePositions[`${t2.id}_${b.id || b.name}`] || '';
+                  return getRankOrder(posA) - getRankOrder(posB);
+                });
+
+                const raceScore1 = Number(activeRaceGame.team1Score) || 0;
+                const raceScore2 = Number(activeRaceGame.team2Score) || 0;
+
                 return `
-                  <div class="glass-card" style="background:rgba(10,14,22,0.85); border:1px solid ${match.isLocked ? 'var(--border-gold)' : 'var(--border-subtle)'}; padding:1.25rem; border-radius:var(--radius-lg); display:flex; flex-direction:column; gap:1rem;">
+                  <div class="glass-card" style="background:rgba(10,14,22,0.85); border:1px solid ${match.isLocked ? 'var(--border-gold)' : (isExpanded ? 'var(--border-cyan)' : 'var(--border-subtle)')}; padding:1.25rem; border-radius:var(--radius-lg); display:flex; flex-direction:column; gap:1rem; transition:all 0.2s ease;">
                     
                     <!-- Match Header Bar -->
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:0.6rem;">
@@ -714,7 +734,7 @@ class ChampionshipView {
                         </span>
                       </div>
 
-                      <div>
+                      <div style="display:flex; align-items:center; gap:0.5rem;">
                         ${match.isLocked ? `
                           <span class="section-tag" style="background:rgba(0,255,136,0.15); color:#00ff88; border-color:#00ff8855; font-size:0.75rem;">
                             🏆 FINALIZED ${match.winnerTeamId === t1.id ? `(${t1.name} Won)` : match.winnerTeamId === t2.id ? `(${t2.name} Won)` : ''}
@@ -728,13 +748,12 @@ class ChampionshipView {
                       </div>
                     </div>
 
-                    <!-- Head-to-Head Main Score Board (Score in Front of Team Name, White Glow) -->
+                    <!-- Head-to-Head Main Score Board (Clickable to Toggle Race View) -->
                     <div style="display:grid; grid-template-columns: 1fr auto 1fr; align-items:center; gap:1rem; padding:0.5rem 0;">
                       
-                      <!-- Team 1 Side (Clickable to Expand) -->
-                      <div style="cursor:pointer; background:${isT1Expanded ? 'rgba(0,242,254,0.08)' : 'rgba(18,23,36,0.5)'}; border:1px solid ${isT1Expanded ? t1.color : 'rgba(255,255,255,0.05)'}; padding:0.85rem 1.15rem; border-radius:var(--radius-md); border-left:4px solid ${t1.color}; transition:all 0.2s ease;" onclick="window.championshipView.toggleTeamRosterExpand('${match.id}', '${t1.id}')" title="Tap to view driver points breakdown">
+                      <!-- Team 1 Side -->
+                      <div style="cursor:pointer; background:${isExpanded ? 'rgba(0,242,254,0.08)' : 'rgba(18,23,36,0.5)'}; border:1px solid ${isExpanded ? t1.color : 'rgba(255,255,255,0.05)'}; padding:0.85rem 1.15rem; border-radius:var(--radius-md); border-left:4px solid ${t1.color}; transition:all 0.2s ease;" onclick="window.championshipView.toggleViewerMatchExpand('${match.id}')" title="Tap to view races and driver points">
                         <div style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem;">
-                          <!-- Team Info -->
                           <div style="display:flex; align-items:center; gap:0.75rem; min-width:0;">
                             <div style="width:38px; height:38px; border-radius:var(--radius-sm); border:2px solid ${t1.color}; overflow:hidden; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.5); flex-shrink:0;">
                               ${t1.logoUrl ? `<img src="${t1.logoUrl}" style="width:100%; height:100%; object-fit:cover;">` : `<span>${t1.logoIcon || '🏎️'}</span>`}
@@ -744,12 +763,11 @@ class ChampionshipView {
                                 ${t1.name}
                               </div>
                               <div style="font-size:0.72rem; color:var(--accent-cyan); display:flex; align-items:center; gap:0.3rem; margin-top:2px;">
-                                <span>${isT1Expanded ? '▲ Hide Driver Points' : '▼ Tap for Driver Points'}</span>
+                                <span>${isExpanded ? '▲ Hide Races' : '▼ Tap to View Races'}</span>
                               </div>
                             </div>
                           </div>
 
-                          <!-- Score in front of Team Name (White + Glow) -->
                           <div style="font-family:var(--font-mono); font-size:1.45rem; font-weight:900; color:#ffffff; text-shadow:0 0 10px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.6), 0 0 35px rgba(255,255,255,0.4); flex-shrink:0; text-align:right; letter-spacing:0.5px;">
                             ${mTotalPts1} PTS
                           </div>
@@ -757,28 +775,26 @@ class ChampionshipView {
                       </div>
 
                       <!-- VS Center Pill -->
-                      <div style="text-align:center;">
+                      <div style="text-align:center; cursor:pointer;" onclick="window.championshipView.toggleViewerMatchExpand('${match.id}')">
                         <div style="font-family:var(--font-display); font-size:1.1rem; font-weight:900; color:var(--text-muted); background:rgba(255,255,255,0.05); width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:1px solid rgba(255,255,255,0.1); margin:0 auto;">
                           VS
                         </div>
                       </div>
 
-                      <!-- Team 2 Side (Clickable to Expand) -->
-                      <div style="cursor:pointer; background:${isT2Expanded ? 'rgba(255,59,92,0.08)' : 'rgba(18,23,36,0.5)'}; border:1px solid ${isT2Expanded ? t2.color : 'rgba(255,255,255,0.05)'}; padding:0.85rem 1.15rem; border-radius:var(--radius-md); border-right:4px solid ${t2.color}; transition:all 0.2s ease;" onclick="window.championshipView.toggleTeamRosterExpand('${match.id}', '${t2.id}')" title="Tap to view driver points breakdown">
+                      <!-- Team 2 Side -->
+                      <div style="cursor:pointer; background:${isExpanded ? 'rgba(255,59,92,0.08)' : 'rgba(18,23,36,0.5)'}; border:1px solid ${isExpanded ? t2.color : 'rgba(255,255,255,0.05)'}; padding:0.85rem 1.15rem; border-radius:var(--radius-md); border-right:4px solid ${t2.color}; transition:all 0.2s ease;" onclick="window.championshipView.toggleViewerMatchExpand('${match.id}')" title="Tap to view races and driver points">
                         <div style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem;">
-                          <!-- Score in front of Team Name (White + Glow) -->
                           <div style="font-family:var(--font-mono); font-size:1.45rem; font-weight:900; color:#ffffff; text-shadow:0 0 10px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.6), 0 0 35px rgba(255,255,255,0.4); flex-shrink:0; text-align:left; letter-spacing:0.5px;">
                             ${mTotalPts2} PTS
                           </div>
 
-                          <!-- Team Info -->
                           <div style="display:flex; align-items:center; justify-content:flex-end; gap:0.75rem; min-width:0; text-align:right;">
                             <div style="min-width:0;">
                               <div style="font-family:var(--font-display); font-size:1.15rem; font-weight:800; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">
                                 ${t2.name}
                               </div>
                               <div style="font-size:0.72rem; color:var(--accent-cyan); display:flex; align-items:center; justify-content:flex-end; gap:0.3rem; margin-top:2px;">
-                                <span>${isT2Expanded ? '▲ Hide Driver Points' : '▼ Tap for Driver Points'}</span>
+                                <span>${isExpanded ? '▲ Hide Races' : '▼ Tap to View Races'}</span>
                               </div>
                             </div>
                             <div style="width:38px; height:38px; border-radius:var(--radius-sm); border:2px solid ${t2.color}; overflow:hidden; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.5); flex-shrink:0;">
@@ -789,75 +805,96 @@ class ChampionshipView {
                       </div>
                     </div>
 
-                    <!-- Accordion Breakdown: Team 1 Drivers -->
-                    ${isT1Expanded ? `
-                      <div style="background:rgba(0,0,0,0.4); border-radius:var(--radius-md); padding:1rem; border:1px solid ${t1.color}44; display:flex; flex-direction:column; gap:0.5rem; animation: fadeIn 0.2s ease;">
-                        <div style="font-size:0.78rem; font-weight:800; color:${t1.color}; text-transform:uppercase; letter-spacing:1px; display:flex; justify-content:space-between;">
-                          <span>${t1.name} — Driver Finishing Points Breakdown</span>
-                          <span>Total: ${mTotalPts1} PTS</span>
-                        </div>
-                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.5rem; margin-top:0.25rem;">
-                          ${t1Drivers.map(d => {
-                            // Calculate driver points across all games in this match
-                            let driverTotal = 0;
-                            const racePositions = [];
-                            mGames.slice(0, mMaxGames).forEach((g, gIdx) => {
-                              const pos = (g.driverPositions || {})[`${t1.id}_${d.id || d.name}`] || '';
-                              const pts = this.getPointsForPosition(pos);
-                              driverTotal += pts;
-                              if (pos) racePositions.push(`R${gIdx + 1}: ${pos} (+${pts})`);
-                            });
-
+                    <!-- EXPANDED RACE BREAKDOWN: RACES TABS + EXACT CAPSULE RACER ROWS (CREW 1 VS CREW 2) -->
+                    ${isExpanded ? `
+                      <div style="background:rgba(0,0,0,0.4); border-radius:var(--radius-md); padding:1.25rem; border:1px solid var(--border-subtle); display:flex; flex-direction:column; gap:1.25rem; animation: fadeIn 0.25s ease;">
+                        
+                        <!-- Race Selector Tabs -->
+                        <div style="display:flex; align-items:center; justify-content:center; gap:0.5rem; flex-wrap:wrap; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:0.85rem;">
+                          <span style="font-size:0.78rem; color:var(--text-muted); font-weight:800; text-transform:uppercase; letter-spacing:1px; margin-right:0.3rem;">SELECT RACE:</span>
+                          ${Array.from({ length: scoredRacesCount }).map((_, rIdx) => {
+                            const isSelected = currentViewerRaceIdx === rIdx;
+                            const rGame = mGames[rIdx];
+                            const hasPts = rGame && (rGame.team1Score > 0 || rGame.team2Score > 0);
                             return `
-                              <div style="background:rgba(18,23,36,0.7); padding:0.5rem 0.75rem; border-radius:var(--radius-sm); border-left:3px solid ${t1.color}; display:flex; justify-content:space-between; align-items:center;">
-                                <div>
-                                  <div style="font-weight:700; color:#fff; font-size:0.88rem;">${d.name || 'Driver'}</div>
-                                  <div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">
-                                    ${racePositions.length > 0 ? racePositions.join(' • ') : 'No position assigned'}
-                                  </div>
-                                </div>
-                                <div style="font-family:var(--font-mono); font-weight:800; font-size:0.95rem; color:var(--accent-gold);">
-                                  ${driverTotal} PTS
-                                </div>
-                              </div>
+                              <button class="btn btn-sm ${isSelected ? 'btn-cyan' : 'btn-outline'}" style="font-size:0.82rem; padding:0.4rem 1rem; border-radius:50px; font-weight:800; ${isSelected ? 'box-shadow:0 0 15px rgba(0,242,254,0.4);' : ''}" onclick="window.championshipView.setViewerSelectedRace('${match.id}', ${rIdx})">
+                                Race #${rIdx + 1} ${hasPts ? `(${rGame.team1Score} - ${rGame.team2Score} PTS)` : ''}
+                              </button>
                             `;
                           }).join('')}
                         </div>
-                      </div>
-                    ` : ''}
 
-                    <!-- Accordion Breakdown: Team 2 Drivers -->
-                    ${isT2Expanded ? `
-                      <div style="background:rgba(0,0,0,0.4); border-radius:var(--radius-md); padding:1rem; border:1px solid ${t2.color}44; display:flex; flex-direction:column; gap:0.5rem; animation: fadeIn 0.2s ease;">
-                        <div style="font-size:0.78rem; font-weight:800; color:${t2.color}; text-transform:uppercase; letter-spacing:1px; display:flex; justify-content:space-between;">
-                          <span>${t2.name} — Driver Finishing Points Breakdown</span>
-                          <span>Total: ${mTotalPts2} PTS</span>
+                        <!-- Crew 1 VS Crew 2 Header Pills (Matching User Mockup) -->
+                        <div style="display:grid; grid-template-columns: 1fr auto 1fr; align-items:center; gap:1rem;">
+                          <!-- Crew 1 Header -->
+                          <div style="background:rgba(255,255,255,0.92); color:#0a0e16; border-radius:50px; padding:0.55rem 1.25rem; text-align:center; display:flex; align-items:center; justify-content:center; gap:0.5rem; box-shadow:0 3px 12px rgba(0,0,0,0.4); border:2px solid ${t1.color};">
+                            <span style="font-family:var(--font-display); font-weight:800; font-size:1.05rem; color:#0a0e16;">${t1.name}</span>
+                            <span style="font-family:var(--font-mono); font-weight:900; font-size:0.88rem; color:#0055ff;">(${raceScore1} PTS)</span>
+                          </div>
+
+                          <!-- VS Pill -->
+                          <div style="font-family:var(--font-display); font-weight:900; font-size:1.1rem; color:#fff; text-shadow:0 0 10px rgba(255,255,255,0.6); padding:0 0.25rem;">
+                            VS
+                          </div>
+
+                          <!-- Crew 2 Header -->
+                          <div style="background:rgba(255,255,255,0.92); color:#0a0e16; border-radius:50px; padding:0.55rem 1.25rem; text-align:center; display:flex; align-items:center; justify-content:center; gap:0.5rem; box-shadow:0 3px 12px rgba(0,0,0,0.4); border:2px solid ${t2.color};">
+                            <span style="font-family:var(--font-display); font-weight:800; font-size:1.05rem; color:#0a0e16;">${t2.name}</span>
+                            <span style="font-family:var(--font-mono); font-weight:900; font-size:0.88rem; color:#d90429;">(${raceScore2} PTS)</span>
+                          </div>
                         </div>
-                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.5rem; margin-top:0.25rem;">
-                          ${t2Drivers.map(d => {
-                            let driverTotal = 0;
-                            const racePositions = [];
-                            mGames.slice(0, mMaxGames).forEach((g, gIdx) => {
-                              const pos = (g.driverPositions || {})[`${t2.id}_${d.id || d.name}`] || '';
-                              const pts = this.getPointsForPosition(pos);
-                              driverTotal += pts;
-                              if (pos) racePositions.push(`R${gIdx + 1}: ${pos} (+${pts})`);
-                            });
 
-                            return `
-                              <div style="background:rgba(18,23,36,0.7); padding:0.5rem 0.75rem; border-radius:var(--radius-sm); border-left:3px solid ${t2.color}; display:flex; justify-content:space-between; align-items:center;">
-                                <div>
-                                  <div style="font-weight:700; color:#fff; font-size:0.88rem;">${d.name || 'Driver'}</div>
-                                  <div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">
-                                    ${racePositions.length > 0 ? racePositions.join(' • ') : 'No position assigned'}
+                        <!-- Capsule Driver Rows: Side-by-Side (Crew 1 on Left, Crew 2 on Right) -->
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem;">
+                          
+                          <!-- Crew 1 Drivers Column -->
+                          <div style="display:flex; flex-direction:column; gap:0.55rem;">
+                            ${t1DriversSorted.map((driver) => {
+                              const pos = activeRacePositions[`${t1.id}_${driver.id || driver.name}`] || '';
+                              const pts = this.getPointsForPosition(pos);
+                              return `
+                                <div style="background:rgba(255,255,255,0.92); color:#0a0e16; border-radius:50px; padding:0.45rem 0.95rem; display:flex; align-items:center; gap:0.65rem; box-shadow:0 2px 8px rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.6);">
+                                  <!-- Rank -->
+                                  <div style="font-family:var(--font-mono); font-weight:800; font-size:0.82rem; color:#444; min-width:34px; text-align:center; padding-right:0.5rem; border-right:1.5px solid #bbb;">
+                                    ${pos || '—'}
+                                  </div>
+                                  <!-- Racer Name -->
+                                  <div style="flex:1; font-family:var(--font-display); font-weight:800; font-size:0.92rem; color:#0a0e16; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">
+                                    ${driver.name}
+                                  </div>
+                                  <!-- Points -->
+                                  <div style="font-family:var(--font-mono); font-weight:800; font-size:0.85rem; color:${pts > 0 ? '#007a3d' : '#888'};">
+                                    ${pos ? (pos === 'DNF' ? 'DNF (0)' : `+${pts} PTS`) : '0 PTS'}
                                   </div>
                                 </div>
-                                <div style="font-family:var(--font-mono); font-weight:800; font-size:0.95rem; color:var(--accent-gold);">
-                                  ${driverTotal} PTS
+                              `;
+                            }).join('')}
+                          </div>
+
+                          <!-- Crew 2 Drivers Column -->
+                          <div style="display:flex; flex-direction:column; gap:0.55rem;">
+                            ${t2DriversSorted.map((driver) => {
+                              const pos = activeRacePositions[`${t2.id}_${driver.id || driver.name}`] || '';
+                              const pts = this.getPointsForPosition(pos);
+                              return `
+                                <div style="background:rgba(255,255,255,0.92); color:#0a0e16; border-radius:50px; padding:0.45rem 0.95rem; display:flex; align-items:center; gap:0.65rem; box-shadow:0 2px 8px rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.6);">
+                                  <!-- Rank -->
+                                  <div style="font-family:var(--font-mono); font-weight:800; font-size:0.82rem; color:#444; min-width:34px; text-align:center; padding-right:0.5rem; border-right:1.5px solid #bbb;">
+                                    ${pos || '—'}
+                                  </div>
+                                  <!-- Racer Name -->
+                                  <div style="flex:1; font-family:var(--font-display); font-weight:800; font-size:0.92rem; color:#0a0e16; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">
+                                    ${driver.name}
+                                  </div>
+                                  <!-- Points -->
+                                  <div style="font-family:var(--font-mono); font-weight:800; font-size:0.85rem; color:${pts > 0 ? '#007a3d' : '#888'};">
+                                    ${pos ? (pos === 'DNF' ? 'DNF (0)' : `+${pts} PTS`) : '0 PTS'}
+                                  </div>
                                 </div>
-                              </div>
-                            `;
-                          }).join('')}
+                              `;
+                            }).join('')}
+                          </div>
+
                         </div>
                       </div>
                     ` : ''}
