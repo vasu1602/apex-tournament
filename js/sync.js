@@ -100,8 +100,8 @@ class SyncBridge {
   // --- GOOGLE FIREBASE REALTIME DATABASE ENGINE ---
   initFirebase(customConfig = null) {
     if (typeof window === 'undefined') return;
-    if (!window.firebase) {
-      setTimeout(() => this.initFirebase(customConfig), 500);
+    if (!window.firebase || typeof window.firebase.initializeApp !== 'function') {
+      setTimeout(() => this.initFirebase(customConfig), 600);
       return;
     }
 
@@ -114,19 +114,27 @@ class SyncBridge {
       if (!window.firebase.apps || !window.firebase.apps.length) {
         window.firebase.initializeApp(config);
       }
-      this.firebaseDb = window.firebase.database();
-      this.isFirebaseConnected = true;
+      if (typeof window.firebase.database === 'function') {
+        this.firebaseDb = window.firebase.database();
+        this.isFirebaseConnected = true;
 
-      // Real-time listener for live cloud updates
-      const tournamentRef = this.firebaseDb.ref(`tournaments/${this.roomId}`);
-      tournamentRef.on('value', (snapshot) => {
-        const cloudData = snapshot.val();
-        if (cloudData && typeof cloudData === 'object' && !this.isApplyingRemoteState) {
-          this.handleRemoteStateUpdate(cloudData);
-        }
-      });
+        // Real-time listener for live cloud updates
+        const tournamentRef = this.firebaseDb.ref(`tournaments/${this.roomId}`);
+        tournamentRef.on('value', (snapshot) => {
+          try {
+            const cloudData = snapshot.val();
+            if (cloudData && typeof cloudData === 'object' && !this.isApplyingRemoteState) {
+              this.handleRemoteStateUpdate(cloudData);
+            }
+          } catch (e) {
+            console.warn('[Firebase Cloud] Snapshot read error:', e);
+          }
+        }, (err) => {
+          console.warn('[Firebase Cloud] Permission notice:', err?.message);
+        });
 
-      this.updateSyncStatus(true, 'Firebase Realtime DB Active');
+        this.updateSyncStatus(true, 'Firebase Realtime DB Active');
+      }
     } catch (err) {
       console.warn('[Firebase Cloud] Init notice:', err);
       this.isFirebaseConnected = false;

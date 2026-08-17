@@ -12,14 +12,26 @@ class AppController {
   constructor() {
     this.activeTab = 'live-arena-view';
     this.canvasBg = null;
+    window.app = this;
   }
 
   init() {
+    window.app = this;
+
     // 1. Initialize canvas background
-    this.canvasBg = initCanvasBackground('bg-canvas');
-    viewerView.init();
-    adminView.init();
-    tournamentBox.init();
+    try {
+      this.canvasBg = initCanvasBackground('bg-canvas');
+    } catch (e) {
+      console.warn('Canvas bg notice:', e);
+    }
+
+    try {
+      viewerView.init();
+      adminView.init();
+      tournamentBox.init();
+    } catch (e) {
+      console.warn('View init notice:', e);
+    }
 
     // 2. Subscribe to state updates
     store.subscribe((state, meta) => {
@@ -41,9 +53,6 @@ class AppController {
         }
       }, 400);
     }
-
-    // Expose app controller globally
-    window.app = this;
   }
 
   setupEventListeners() {
@@ -868,10 +877,18 @@ class AppController {
   }
 }
 
-// Start application when DOM is ready
+// Start application immediately regardless of document readyState
 if (typeof document !== 'undefined') {
-  document.addEventListener('DOMContentLoaded', () => {
-    const app = new AppController();
-    app.init();
-  });
+  const startApp = () => {
+    if (!window.app) {
+      const app = new AppController();
+      app.init();
+    }
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startApp);
+  } else {
+    startApp();
+  }
 }
