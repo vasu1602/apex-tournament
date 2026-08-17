@@ -996,7 +996,7 @@ class ChampionshipView {
                         ${item.raceWins}
                       </td>
                       <td style="padding:0.75rem 0.85rem; text-align:right;">
-                        <span style="font-family:var(--font-mono); font-weight:900; font-size:1.15rem; color:${t.color || 'var(--accent-gold)'};">
+                        <span style="font-family:var(--font-mono); font-weight:900; font-size:1.15rem; color:#ffffff; text-shadow:0 0 10px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.6), 0 0 35px rgba(255,255,255,0.4); letter-spacing:0.5px;">
                           ${item.totalPoints.toLocaleString()} PTS
                         </span>
                       </td>
