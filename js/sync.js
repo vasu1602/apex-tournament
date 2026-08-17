@@ -401,8 +401,7 @@ class SyncBridge {
       matchups: remoteData.tournamentMatchups,
       standingsVisible: remoteData.showChampionshipStandingsToViewers,
       pending1: remoteData.pendingTeam1?.id,
-      pending2: remoteData.pendingTeam2?.id,
-      timestamp: remoteData.updatedAt
+      pending2: remoteData.pendingTeam2?.id
     });
 
     if (this.lastSyncedHash === stateHash) return;
@@ -453,8 +452,7 @@ class SyncBridge {
       matchups: payloadToSync.tournamentMatchups,
       standingsVisible: payloadToSync.showChampionshipStandingsToViewers,
       pending1: payloadToSync.pendingTeam1?.id,
-      pending2: payloadToSync.pendingTeam2?.id,
-      timestamp: payloadToSync.updatedAt
+      pending2: payloadToSync.pendingTeam2?.id
     });
     this.lastSyncedHash = stateHash;
 

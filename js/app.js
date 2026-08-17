@@ -153,45 +153,47 @@ class AppController {
       }
     }
 
-    // Always keep public views fresh with independent resilience
-    try {
-      viewerView.renderLiveStage('live-arena-view');
-    } catch (e) {
-      console.error('Error rendering Live Arena:', e);
+    // Render active tab view efficiently without thrashing inactive tab DOMs
+    if (this.activeTab === 'live-arena-view') {
+      try {
+        viewerView.renderLiveStage('live-arena-view');
+      } catch (e) {
+        console.error('Error rendering Live Arena:', e);
+      }
+    } else if (this.activeTab === 'teams-view') {
+      try {
+        viewerView.renderTeamsGrid('teams-container');
+      } catch (e) {
+        console.error('Error rendering Teams:', e);
+      }
+    } else if (this.activeTab === 'racers-view') {
+      try {
+        viewerView.renderRacersGrid('racers-container');
+      } catch (e) {
+        console.error('Error rendering Racers:', e);
+      }
+    } else if (this.activeTab === 'tournament-view') {
+      try {
+        tournamentBox.renderTournamentView('tournament-view');
+      } catch (e) {
+        console.error('Error rendering Tournament:', e);
+      }
+    } else if (this.activeTab === 'championship-view') {
+      try {
+        championshipView.renderChampionshipView('championship-container');
+      } catch (e) {
+        console.error('Error rendering Championship Tournament:', e);
+      }
     }
 
-    try {
-      viewerView.renderTeamsGrid('teams-container');
-    } catch (e) {
-      console.error('Error rendering Teams:', e);
-    }
-
-    try {
-      viewerView.renderRacersGrid('racers-container');
-    } catch (e) {
-      console.error('Error rendering Racers:', e);
-    }
-
-    try {
-      tournamentBox.renderTournamentView('tournament-view');
-    } catch (e) {
-      console.error('Error rendering Tournament:', e);
-    }
-
-    try {
-      championshipView.renderChampionshipView('championship-container');
-    } catch (e) {
-      console.error('Error rendering Championship Tournament:', e);
-    }
-
-    // Render admin view only if authenticated
-    if (isAuth) {
+    // Render admin view only if authenticated and currently on admin tab
+    if (isAuth && this.activeTab === 'admin-view') {
       try {
         adminView.renderAdminDesk('admin-desk-view');
       } catch (e) {
         console.error('Error rendering Admin Desk:', e);
       }
-    } else {
+    } else if (!isAuth) {
       const adminContainer = document.getElementById('admin-desk-view');
       if (adminContainer) {
         adminContainer.innerHTML = '';
