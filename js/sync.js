@@ -9,6 +9,8 @@ class SyncBridge {
     this.peer = null;
     this.peerHostConn = null;
     this.peerConnections = new Set();
+    this.firebaseDb = null;
+    this.isFirebaseConnected = false;
     this.isCloudConnected = false;
     this.isLocalServerConnected = false;
     this.isApplyingRemoteState = false;
@@ -34,6 +36,9 @@ class SyncBridge {
 
   init() {
     if (typeof window === 'undefined') return;
+
+    // 0. Connect to Google Firebase Realtime Database (Persistent Cloud Storage)
+    this.initFirebase();
 
     // 1. Local BroadcastChannel for same-device multi-tab synchronization
     if ('BroadcastChannel' in window) {
@@ -79,6 +84,73 @@ class SyncBridge {
     setTimeout(() => this.requestSync(), 1200);
 
     window.syncBridge = this;
+  }
+
+  // --- GOOGLE FIREBASE REALTIME DATABASE ENGINE ---
+  initFirebase(customConfig = null) {
+    if (typeof window === 'undefined') return;
+    if (!window.firebase) {
+      setTimeout(() => this.initFirebase(customConfig), 500);
+      return;
+    }
+
+    try {
+      const config = customConfig || this.getFirebaseConfig();
+      if (!config || !config.databaseURL) {
+        return;
+      }
+
+      if (!window.firebase.apps || !window.firebase.apps.length) {
+        window.firebase.initializeApp(config);
+      }
+      this.firebaseDb = window.firebase.database();
+      this.isFirebaseConnected = true;
+
+      // Real-time listener for live cloud updates
+      const tournamentRef = this.firebaseDb.ref(`tournaments/${this.roomId}`);
+      tournamentRef.on('value', (snapshot) => {
+        const cloudData = snapshot.val();
+        if (cloudData && typeof cloudData === 'object' && !this.isApplyingRemoteState) {
+          this.handleRemoteStateUpdate(cloudData);
+        }
+      });
+
+      this.updateSyncStatus(true, 'Firebase Realtime DB Active');
+    } catch (err) {
+      console.warn('[Firebase Cloud] Init notice:', err);
+      this.isFirebaseConnected = false;
+    }
+  }
+
+  getFirebaseConfig() {
+    try {
+      const stored = localStorage.getItem('apex_firebase_config');
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return null;
+  }
+
+  saveFirebaseConfig(config) {
+    try {
+      localStorage.setItem('apex_firebase_config', JSON.stringify(config));
+      this.initFirebase(config);
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  clearFirebaseConfig() {
+    localStorage.removeItem('apex_firebase_config');
+    this.isFirebaseConnected = false;
+    this.firebaseDb = null;
+  }
+
+  syncAllToFirebase() {
+    if (!this.firebaseDb) return { success: false, message: 'Firebase is not connected.' };
+    const currentState = store.getState();
+    this.broadcastState(currentState);
+    return { success: true };
   }
 
   requestSync() {
@@ -411,6 +483,15 @@ class SyncBridge {
           } catch (e) {}
         }
       });
+    }
+
+    // 5. Save directly to Google Firebase Realtime Database (Persistent Cloud Storage)
+    if (this.firebaseDb && !this.isApplyingRemoteState) {
+      try {
+        this.firebaseDb.ref(`tournaments/${this.roomId}`).set(payloadToSync);
+      } catch (err) {
+        console.warn('[Firebase Cloud] Database save notice:', err);
+      }
     }
   }
 

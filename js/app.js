@@ -772,6 +772,59 @@ class AppController {
     reader.readAsText(file);
   }
 
+  // --- FIREBASE CLOUD DATABASE CONTROLS ---
+  saveFirebaseSettings() {
+    const dbUrl = document.getElementById('fb-database-url')?.value.trim();
+    const apiKey = document.getElementById('fb-api-key')?.value.trim();
+    const projectId = document.getElementById('fb-project-id')?.value.trim();
+
+    if (!dbUrl || !apiKey || !projectId) {
+      this.showToast('Please fill in Database URL, API Key, and Project ID', 'error');
+      return;
+    }
+
+    const config = {
+      databaseURL: dbUrl,
+      apiKey: apiKey,
+      projectId: projectId
+    };
+
+    if (window.syncBridge) {
+      const res = window.syncBridge.saveFirebaseConfig(config);
+      if (res.success) {
+        // Push full tournament state to Firebase immediately
+        setTimeout(() => {
+          window.syncBridge.syncAllToFirebase();
+        }, 500);
+        this.closeModal();
+        this.showToast('🔥 Firebase Connected! All racers and tournament data saved to Cloud.', 'success');
+      } else {
+        this.showToast(`Firebase setup error: ${res.error}`, 'error');
+      }
+    }
+  }
+
+  clearFirebaseSettings() {
+    if (confirm('Disconnect Firebase cloud database?')) {
+      if (window.syncBridge) {
+        window.syncBridge.clearFirebaseConfig();
+        this.closeModal();
+        this.showToast('Firebase disconnected', 'info');
+      }
+    }
+  }
+
+  syncAllToFirebase() {
+    if (window.syncBridge) {
+      const res = window.syncBridge.syncAllToFirebase();
+      if (res && res.success) {
+        this.showToast('☁️ Synced all tournament data to Firebase Cloud!', 'success');
+      } else {
+        this.showToast(res?.message || 'Firebase is not connected', 'error');
+      }
+    }
+  }
+
   confirmResetTournament() {
     if (confirm('Are you sure you want to reset all tournament data back to initial state? This cannot be undone.')) {
       store.resetTournament();

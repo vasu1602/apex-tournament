@@ -594,14 +594,76 @@ class AdminView {
     const modalTitle = document.getElementById('general-modal-title');
     if (!modalBody || !modalTitle) return;
 
-    modalTitle.textContent = '⚙️ Tournament Data & Cloud Sync';
+    modalTitle.textContent = '⚙️ Tournament Data & Cloud Database';
 
     const viewerUrl = window.syncBridge ? window.syncBridge.getViewerShareUrl() : window.location.href;
     const isCloudConnected = window.syncBridge ? window.syncBridge.isCloudConnected : false;
+    const isFirebaseConnected = window.syncBridge ? window.syncBridge.isFirebaseConnected : false;
+    const firebaseConfig = window.syncBridge ? window.syncBridge.getFirebaseConfig() : null;
     const roomId = window.syncBridge ? window.syncBridge.roomId : 'soulcity2026';
 
     modalBody.innerHTML = `
       <div style="display:flex; flex-direction:column; gap:1.25rem;">
+        
+        <!-- FIREBASE REALTIME DATABASE CLOUD STORAGE -->
+        <div style="background:rgba(255,184,0,0.06); padding:1.25rem; border-radius:var(--radius-md); border:1px solid rgba(255,184,0,0.3);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem; flex-wrap:wrap; gap:0.5rem;">
+            <h4 style="font-family:var(--font-display); font-size:1rem; color:var(--accent-gold); display:flex; align-items:center; gap:0.5rem; margin:0;">
+              <span>🔥</span> Firebase Cloud Database (Permanent Storage)
+            </h4>
+            <span class="section-tag" style="background:${isFirebaseConnected ? 'rgba(0,255,135,0.15)' : 'rgba(255,184,0,0.15)'}; color:${isFirebaseConnected ? 'var(--accent-green)' : 'var(--accent-gold)'}; border-color:${isFirebaseConnected ? 'rgba(0,255,135,0.4)' : 'rgba(255,184,0,0.4)'}; font-size:0.75rem;">
+              ${isFirebaseConnected ? '● Firebase Cloud Active' : '○ Not Configured'}
+            </span>
+          </div>
+          <p style="font-size:0.83rem; color:var(--text-secondary); margin-bottom:0.85rem; line-height:1.45;">
+            Connect your Google Firebase Realtime Database to store <strong>racers, teams, rounds, and matchups permanently in the cloud</strong>. When connected, your data will never disappear on page refresh or device change.
+          </p>
+
+          <form id="firebase-config-form" onsubmit="event.preventDefault(); window.app.saveFirebaseSettings();" style="display:flex; flex-direction:column; gap:0.75rem;">
+            <div class="control-field-group">
+              <label class="control-label" style="font-size:0.75rem;">Firebase Database URL *</label>
+              <input type="url" id="fb-database-url" class="form-input font-mono" placeholder="https://your-project-default-rtdb.firebaseio.com" value="${firebaseConfig?.databaseURL || ''}" required style="font-size:0.85rem;">
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.75rem;">
+              <div class="control-field-group">
+                <label class="control-label" style="font-size:0.75rem;">API Key *</label>
+                <input type="text" id="fb-api-key" class="form-input font-mono" placeholder="AIzaSy..." value="${firebaseConfig?.apiKey || ''}" required style="font-size:0.82rem;">
+              </div>
+              <div class="control-field-group">
+                <label class="control-label" style="font-size:0.75rem;">Project ID *</label>
+                <input type="text" id="fb-project-id" class="form-input font-mono" placeholder="apex-racing-2026" value="${firebaseConfig?.projectId || ''}" required style="font-size:0.82rem;">
+              </div>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-top:0.35rem;">
+              <div style="display:flex; gap:0.5rem;">
+                <button type="submit" class="btn btn-gold btn-sm">
+                  💾 Connect & Save Firebase
+                </button>
+                <button type="button" class="btn btn-cyan btn-sm" onclick="window.app.syncAllToFirebase()" ${!isFirebaseConnected ? 'disabled' : ''}>
+                  ☁️ Force Sync to Cloud
+                </button>
+              </div>
+              ${firebaseConfig ? `
+                <button type="button" class="btn btn-danger btn-sm" onclick="window.app.clearFirebaseSettings()">
+                  Disconnect
+                </button>
+              ` : ''}
+            </div>
+          </form>
+
+          <!-- Quick Setup Instructions Accordion / Card -->
+          <div style="margin-top:0.85rem; padding:0.65rem 0.85rem; background:rgba(0,0,0,0.3); border-radius:var(--radius-sm); border:1px dashed var(--border-subtle); font-size:0.76rem; color:var(--text-muted);">
+            <strong style="color:#fff;">Quick 1-Minute Setup:</strong>
+            <ol style="margin:0.35rem 0 0 1.2rem; padding:0; display:flex; flex-direction:column; gap:0.25rem;">
+              <li>Go to <a href="https://console.firebase.google.com" target="_blank" style="color:var(--accent-cyan);">Firebase Console</a> and click <strong>Create a Project</strong>.</li>
+              <li>Under <strong>Build ➔ Realtime Database</strong>, click <strong>Create Database</strong> and select <strong>Test Mode</strong> (Read & Write enabled).</li>
+              <li>Copy the <strong>Database URL</strong> and your <strong>Project Settings ➔ Web API Key</strong> into the fields above and click Save!</li>
+            </ol>
+          </div>
+        </div>
+
         <!-- Live Cloud Multi-Device Sync Card -->
         <div style="background:rgba(0,242,254,0.06); padding:1.15rem; border-radius:var(--radius-md); border:1px solid rgba(0,242,254,0.3);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">

@@ -77,7 +77,7 @@ class StateStore {
         const serialized = localStorage.getItem(STORAGE_KEY);
         if (serialized) {
           const parsed = JSON.parse(serialized);
-          if (parsed && Array.isArray(parsed.teams) && Array.isArray(parsed.racers)) {
+          if (parsed && typeof parsed === 'object') {
             const savedSession = parsed.currentUser?.isAuthenticated ? parsed.currentUser : {
               isAuthenticated: false,
               role: 'viewer',
@@ -99,12 +99,17 @@ class StateStore {
 
             return {
               ...INITIAL_STATE,
-              ...parsed,
+              tournamentName: parsed.tournamentName || INITIAL_STATE.tournamentName,
+              teams: Array.isArray(parsed.teams) ? parsed.teams : [],
+              racers: Array.isArray(parsed.racers) ? parsed.racers : [],
               tournamentRounds: Array.isArray(parsed.tournamentRounds) && parsed.tournamentRounds.length > 0 ? parsed.tournamentRounds : INITIAL_STATE.tournamentRounds,
               activeTournamentRoundId: parsed.activeTournamentRoundId || 'round_qualifiers',
               tournamentMatchups: Array.isArray(parsed.tournamentMatchups) ? parsed.tournamentMatchups : [],
+              activeAuction: parsed.activeAuction || INITIAL_STATE.activeAuction,
+              auctionHistory: Array.isArray(parsed.auctionHistory) ? parsed.auctionHistory : [],
               accessCodes,
-              currentUser: savedSession
+              currentUser: savedSession,
+              updatedAt: Number(parsed.updatedAt) || Date.now()
             };
           }
         }
