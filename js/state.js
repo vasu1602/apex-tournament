@@ -169,13 +169,24 @@ class StateStore {
     const incomingTime = Number(newState.updatedAt) || Date.now();
 
     const incomingMatchups = Array.isArray(newState.tournamentMatchups) ? newState.tournamentMatchups : null;
-    const currentMatchups = this.state.tournamentMatchups || [];
-    // Only replace with empty array if explicitly cleared by admin, never wipe local matchups on cold empty payload!
-    const finalMatchups = (incomingMatchups && incomingMatchups.length > 0)
-      ? incomingMatchups
-      : (newState.isExplicitClear ? [] : currentMatchups);
+    const incomingRounds = Array.isArray(newState.tournamentRounds) && newState.tournamentRounds.length > 0 
+      ? newState.tournamentRounds 
+      : (this.state.tournamentRounds || INITIAL_STATE.tournamentRounds);
 
-    const incomingRounds = Array.isArray(newState.tournamentRounds) && newState.tournamentRounds.length > 0 ? newState.tournamentRounds : (this.state.tournamentRounds || INITIAL_STATE.tournamentRounds);
+    let finalMatchups = this.state.tournamentMatchups || [];
+    if (incomingMatchups) {
+      if (incomingMatchups.length > 0 || newState.isExplicitClear || incomingTime >= (this.state.updatedAt || 0)) {
+        finalMatchups = incomingMatchups;
+      }
+    }
+
+    // Filter matchups so no orphan matchups from deleted rounds remain
+    const validRoundIds = new Set(incomingRounds.map(r => r.id));
+    finalMatchups = finalMatchups.filter(m => validRoundIds.has(m.roundId || incomingRounds[0]?.id));
+
+    const finalActiveRoundId = validRoundIds.has(newState.activeTournamentRoundId)
+      ? newState.activeTournamentRoundId
+      : (validRoundIds.has(this.state.activeTournamentRoundId) ? this.state.activeTournamentRoundId : incomingRounds[0]?.id);
 
     this.state = {
       ...this.state,
@@ -186,7 +197,7 @@ class StateStore {
       activeAuction: newState.activeAuction || this.state.activeAuction,
       auctionHistory: Array.isArray(newState.auctionHistory) ? newState.auctionHistory : this.state.auctionHistory,
       tournamentRounds: incomingRounds,
-      activeTournamentRoundId: newState.activeTournamentRoundId || this.state.activeTournamentRoundId,
+      activeTournamentRoundId: finalActiveRoundId,
       tournamentMatchups: finalMatchups,
       currentUser: currentSession,
       updatedAt: incomingTime
@@ -950,7 +961,7 @@ class StateStore {
     if (this.state.activeTournamentRoundId === roundId) {
       this.state.activeTournamentRoundId = this.state.tournamentRounds[0]?.id || null;
     }
-    this.saveState();
+    this.saveState(true, true);
     return { success: true };
   }
 

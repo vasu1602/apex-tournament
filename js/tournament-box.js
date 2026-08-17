@@ -61,9 +61,14 @@ class TournamentBoxView {
   syncTeamsFromStore(forceReset = false) {
     const { currentUser, tournamentRounds = [{ id: 'round_qualifiers', name: 'Qualifiers', isLocked: false }], activeTournamentRoundId = 'round_qualifiers', tournamentMatchups = [] } = store.getState();
     const isAdmin = Boolean(currentUser && currentUser.isAuthenticated);
+
+    if (this.localSelectedRoundId && !tournamentRounds.some((r) => r.id === this.localSelectedRoundId)) {
+      this.localSelectedRoundId = null;
+    }
+
     const activeRoundId = isAdmin 
       ? (activeTournamentRoundId || tournamentRounds[0]?.id)
-      : (this.localSelectedRoundId && tournamentRounds.some(r => r.id === this.localSelectedRoundId) ? this.localSelectedRoundId : (activeTournamentRoundId || tournamentRounds[0]?.id));
+      : (this.localSelectedRoundId || activeTournamentRoundId || tournamentRounds[0]?.id);
 
     const activeRound = tournamentRounds.find((r) => r.id === activeRoundId) || tournamentRounds[0];
     const allTeams = this.getAllAvailableTeams();
@@ -587,9 +592,13 @@ class TournamentBoxView {
     const isAdmin = Boolean(currentUser && currentUser.isAuthenticated);
     const allTeams = this.getAllAvailableTeams();
 
+    if (this.localSelectedRoundId && !tournamentRounds.some((r) => r.id === this.localSelectedRoundId)) {
+      this.localSelectedRoundId = null;
+    }
+
     const activeRoundId = isAdmin 
       ? (activeTournamentRoundId || tournamentRounds[0]?.id)
-      : (this.localSelectedRoundId && tournamentRounds.some(r => r.id === this.localSelectedRoundId) ? this.localSelectedRoundId : (activeTournamentRoundId || tournamentRounds[0]?.id));
+      : (this.localSelectedRoundId || activeTournamentRoundId || tournamentRounds[0]?.id);
 
     const activeRound = tournamentRounds.find((r) => r.id === activeRoundId) || tournamentRounds[0];
     const currentRoundMatchups = tournamentMatchups.filter((m) => (m.roundId || tournamentRounds[0]?.id) === activeRound.id);
