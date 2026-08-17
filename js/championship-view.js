@@ -10,6 +10,13 @@ class ChampionshipView {
     this.sortByRank = false;
     this.viewerExpandedMatches = new Set(); // Set of matchIds currently expanded
     this.viewerSelectedRaces = {}; // { [matchId]: raceIndex }
+    this.tournamentSubMode = 'crew'; // 'crew' | 'solo'
+  }
+
+  setTournamentSubMode(mode) {
+    this.tournamentSubMode = mode;
+    if (window.soundFX) soundFX.play('click');
+    this.renderChampionshipView();
   }
 
   init() {
@@ -1084,13 +1091,63 @@ class ChampionshipView {
         `;
       }
 
-      container.innerHTML = `
-        <div style="display:flex; flex-direction:column; gap:1.5rem; width:100%;">
-          ${adminHubHtml}
-          ${viewerMatchCardsHtml}
-          ${standingsHtml}
+      const subNavBarHtml = `
+        <!-- TOURNAMENT SUB-NAVIGATION (CREW / SOLO) -->
+        <div style="display:flex; justify-content:center; align-items:center; margin: 0 0 0.5rem;">
+          <div style="display:inline-flex; background:rgba(14,18,28,0.85); padding:0.35rem; border-radius:50px; border:1px solid rgba(0,242,254,0.25); box-shadow:0 4px 20px rgba(0,0,0,0.4); backdrop-filter:blur(10px); gap:0.35rem;">
+            <button 
+              class="btn btn-sm ${this.tournamentSubMode === 'crew' ? 'btn-cyan' : 'btn-ghost'}" 
+              style="border-radius:50px; padding:0.45rem 1.6rem; font-family:var(--font-display); font-size:0.88rem; font-weight:800; letter-spacing:1px; text-transform:uppercase; transition:all 0.25s ease;"
+              onclick="window.championshipView.setTournamentSubMode('crew')">
+              🏁 Crew
+            </button>
+            <button 
+              class="btn btn-sm ${this.tournamentSubMode === 'solo' ? 'btn-cyan' : 'btn-ghost'}" 
+              style="border-radius:50px; padding:0.45rem 1.6rem; font-family:var(--font-display); font-size:0.88rem; font-weight:800; letter-spacing:1px; text-transform:uppercase; transition:all 0.25s ease;"
+              onclick="window.championshipView.setTournamentSubMode('solo')">
+              🏎️ Solo
+            </button>
+          </div>
         </div>
       `;
+
+      const soloViewHtml = `
+        <!-- SOLO RACING MODE CONTAINER -->
+        <div class="glass-card" style="border-top:3px solid var(--accent-cyan); width:100%; padding:3.5rem 1.5rem; text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.25rem;">
+          <div style="width:72px; height:72px; border-radius:50%; background:rgba(0,242,254,0.12); border:2px solid var(--accent-cyan); display:flex; align-items:center; justify-content:center; font-size:2.3rem; box-shadow:0 0 25px rgba(0,242,254,0.35);">
+            🏎️
+          </div>
+          <div style="display:flex; flex-direction:column; gap:0.4rem;">
+            <span class="section-tag" style="color:var(--accent-cyan); align-self:center; font-size:0.75rem; letter-spacing:1px;">
+              SOLO TOURNAMENT ARENA
+            </span>
+            <h3 style="font-family:var(--font-display); font-size:1.65rem; color:#fff; text-transform:uppercase; letter-spacing:1px; margin:0.25rem 0 0;">
+              Solo Championship Racing
+            </h3>
+            <p style="color:var(--text-secondary); max-width:500px; font-size:0.9rem; margin:0.5rem auto 0; line-height:1.5;">
+              Individual driver leaderboard and solo tournament matches will appear here.
+            </p>
+          </div>
+        </div>
+      `;
+
+      if (this.tournamentSubMode === 'solo') {
+        container.innerHTML = `
+          <div style="display:flex; flex-direction:column; gap:1.5rem; width:100%;">
+            ${subNavBarHtml}
+            ${soloViewHtml}
+          </div>
+        `;
+      } else {
+        container.innerHTML = `
+          <div style="display:flex; flex-direction:column; gap:1.5rem; width:100%;">
+            ${subNavBarHtml}
+            ${adminHubHtml}
+            ${viewerMatchCardsHtml}
+            ${standingsHtml}
+          </div>
+        `;
+      }
     } catch (err) {
       console.error('Error in renderChampionshipView:', err);
     }
