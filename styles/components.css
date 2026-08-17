@@ -2025,6 +2025,49 @@
   color: #fff;
 }
 
+.round-pill-tab-delete {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--accent-red);
+  background: rgba(255, 23, 68, 0.08);
+  border: 1px dashed rgba(255, 23, 68, 0.4);
+  border-radius: var(--radius-pill);
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.round-pill-tab-delete:hover {
+  background: rgba(255, 23, 68, 0.2);
+  border-color: var(--accent-red);
+  color: #fff;
+}
+
+.round-pill-inline-close {
+  margin-left: 0.4rem;
+  font-size: 0.7rem;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.25);
+  color: inherit;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.round-pill-inline-close:hover {
+  background: var(--accent-red);
+  color: #fff;
+}
+
 .round-name-inline-input {
   font-family: var(--font-display);
   font-size: 1.05rem;

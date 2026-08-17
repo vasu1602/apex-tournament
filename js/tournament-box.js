@@ -387,18 +387,31 @@ class TournamentBoxView {
   }
 
   deleteRound(roundId) {
-    const { currentUser } = store.getState();
+    const { currentUser, tournamentRounds = [] } = store.getState();
     if (!currentUser?.isAuthenticated) return;
-    if (confirm('Delete this round and all its matchups?')) {
+    const targetRound = tournamentRounds.find((r) => r.id === roundId);
+    const roundName = targetRound ? targetRound.name : 'this round';
+    if (confirm(`Are you sure you want to delete round "${roundName}" and all its matchups?`)) {
       const res = store.deleteTournamentRound(roundId);
       if (res.success) {
         this.syncTeamsFromStore(true);
         this.renderTournamentView();
-        if (window.app) window.app.showToast('Round deleted', 'info');
+        if (window.app) window.app.showToast(`Round "${roundName}" deleted successfully`, 'info');
       } else if (window.app) {
-        window.app.showToast(res.message, 'warning');
+        window.app.showToast(res.message || 'Could not delete round', 'warning');
       }
     }
+  }
+
+  promptDeleteRound() {
+    const { currentUser, tournamentRounds = [], activeTournamentRoundId } = store.getState();
+    if (!currentUser?.isAuthenticated) return;
+    if (tournamentRounds.length <= 1) {
+      if (window.app) window.app.showToast('At least one round must remain in the tournament', 'warning');
+      return;
+    }
+    const activeRound = tournamentRounds.find((r) => r.id === activeTournamentRoundId) || tournamentRounds[0];
+    this.deleteRound(activeRound.id);
   }
 
   clearCurrentRoundMatchups(roundId) {
@@ -886,7 +899,10 @@ class TournamentBoxView {
                   <button class="round-pill-tab ${isSelected ? 'active' : ''} ${r.isLocked ? 'locked-round' : ''}" 
                           onclick="window.tournamentBox.selectRound('${r.id}')"
                           title="${r.name} (${count} matches)">
-                    ${r.isLocked ? '🔒 ' : ''}${r.name} (${count})
+                    <span>${r.isLocked ? '🔒 ' : ''}${r.name} (${count})</span>
+                    ${isAdmin && tournamentRounds.length > 1 ? `
+                      <span class="round-pill-inline-close" onclick="event.stopPropagation(); window.tournamentBox.deleteRound('${r.id}')" title="Delete ${r.name}">✕</span>
+                    ` : ''}
                   </button>
                 `;
               }).join('')}
@@ -895,6 +911,11 @@ class TournamentBoxView {
                 <button class="round-pill-tab-add" onclick="window.tournamentBox.promptAddRound()" title="Add a new tournament round">
                   + Add Round
                 </button>
+                ${tournamentRounds.length > 1 ? `
+                  <button class="round-pill-tab-delete" onclick="window.tournamentBox.promptDeleteRound()" title="Delete active round (${activeRound.name})">
+                    🗑️ - Delete Round
+                  </button>
+                ` : ''}
               ` : ''}
             </div>
 
@@ -936,16 +957,16 @@ class TournamentBoxView {
                   ${currentRoundMatchups.length > 0 ? `
                     <button class="btn btn-danger btn-sm" style="font-size:0.72rem; padding:0.3rem 0.6rem;" 
                             onclick="window.tournamentBox.clearCurrentRoundMatchups('${activeRound.id}')" 
-                            title="Clear matches for this round">
-                      🗑️ Clear
+                            title="Clear all match fixtures for this round">
+                      🗑️ Clear Matches
                     </button>
                   ` : ''}
 
                   ${tournamentRounds.length > 1 ? `
-                    <button class="btn btn-outline btn-sm" style="font-size:0.75rem; padding:0.3rem 0.55rem; color:var(--text-muted);" 
+                    <button class="btn btn-danger btn-sm" style="font-size:0.72rem; padding:0.3rem 0.65rem; background:rgba(255,23,68,0.15); border-color:var(--accent-red); color:var(--accent-red);" 
                             onclick="window.tournamentBox.deleteRound('${activeRound.id}')" 
-                            title="Delete this round">
-                      ✕
+                            title="Delete this round (${activeRound.name})">
+                      🗑️ Delete Round
                     </button>
                   ` : ''}
                 </div>
