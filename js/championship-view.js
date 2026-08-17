@@ -559,8 +559,8 @@ class ChampionshipView {
                               `).join('')}
                             </select>
 
-                            <div style="font-family:var(--font-mono); font-weight:800; font-size:0.92rem; min-width:70px; text-align:right; color:${ptsColor};">
-                              ${currentPos ? (currentPos === 'DNF' ? 'DNF (0)' : `+${pts} PTS`) : '0 PTS'}
+                            <div style="font-family:var(--font-mono); font-weight:900; font-size:0.95rem; min-width:70px; text-align:right; color:#ffffff; text-shadow:0 0 8px rgba(255,255,255,0.9), 0 0 16px rgba(255,255,255,0.6);">
+                              ${currentPos ? (currentPos === 'DNF' ? '0 PTS' : `${pts} PTS`) : '0 PTS'}
                             </div>
                           </div>
                         </div>
@@ -598,7 +598,6 @@ class ChampionshipView {
                       const driverKey = `${team2.id}_${driver.id || driver.name}`;
                       const currentPos = activeMergedPositions[driverKey] || '';
                       const pts = this.getPointsForPosition(currentPos);
-                      const ptsColor = pts > 0 ? 'var(--accent-gold)' : (currentPos === 'DNF' ? 'var(--accent-red)' : 'var(--text-muted)');
 
                       return `
                         <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(18,23,36,0.6); padding:0.55rem 0.75rem; border-radius:var(--radius-md); border:1px solid rgba(255,255,255,0.05); gap:0.5rem;">
@@ -618,8 +617,8 @@ class ChampionshipView {
                               `).join('')}
                             </select>
 
-                            <div style="font-family:var(--font-mono); font-weight:800; font-size:0.92rem; min-width:70px; text-align:right; color:${ptsColor};">
-                              ${currentPos ? (currentPos === 'DNF' ? 'DNF (0)' : `+${pts} PTS`) : '0 PTS'}
+                            <div style="font-family:var(--font-mono); font-weight:900; font-size:0.95rem; min-width:70px; text-align:right; color:#ffffff; text-shadow:0 0 8px rgba(255,255,255,0.9), 0 0 16px rgba(255,255,255,0.6);">
+                              ${currentPos ? (currentPos === 'DNF' ? '0 PTS' : `${pts} PTS`) : '0 PTS'}
                             </div>
                           </div>
                         </div>
@@ -689,12 +688,10 @@ class ChampionshipView {
                 const isExpanded = this.viewerExpandedMatches.has(match.id);
                 const currentViewerRaceIdx = this.viewerSelectedRaces[match.id] || 0;
 
-                // Determine how many races are available to view (at least 1, or up to maxGames if updated)
                 const scoredRacesCount = Math.max(1, Math.min(mMaxGames, mGames.length > 0 ? mGames.length : 1));
                 const activeRaceGame = mGames[currentViewerRaceIdx] || { driverPositions: {}, team1Score: 0, team2Score: 0 };
                 const activeRacePositions = activeRaceGame.driverPositions || {};
 
-                // Get Drivers and sort by finish position in the currently selected race
                 const getRankOrder = (pos) => {
                   if (!pos) return 999;
                   if (pos === 'DNF') return 900;
@@ -829,7 +826,7 @@ class ChampionshipView {
                           <!-- Crew 1 Header -->
                           <div style="background:rgba(18,23,36,0.85); color:#fff; border-radius:50px; padding:0.6rem 1.25rem; text-align:center; display:flex; align-items:center; justify-content:center; gap:0.5rem; box-shadow:0 0 15px ${t1.color}33; border:2px solid ${t1.color}; backdrop-filter:blur(8px);">
                             <span style="font-family:var(--font-display); font-weight:800; font-size:1.05rem; color:#fff;">${t1.name}</span>
-                            <span style="font-family:var(--font-mono); font-weight:900; font-size:0.88rem; color:${t1.color};">(${raceScore1} PTS)</span>
+                            <span style="font-family:var(--font-mono); font-weight:900; font-size:0.95rem; color:#ffffff; text-shadow:0 0 8px rgba(255,255,255,0.9), 0 0 16px rgba(255,255,255,0.6);">(${raceScore1} PTS)</span>
                           </div>
 
                           <!-- VS Pill -->
@@ -840,7 +837,7 @@ class ChampionshipView {
                           <!-- Crew 2 Header -->
                           <div style="background:rgba(18,23,36,0.85); color:#fff; border-radius:50px; padding:0.6rem 1.25rem; text-align:center; display:flex; align-items:center; justify-content:center; gap:0.5rem; box-shadow:0 0 15px ${t2.color}33; border:2px solid ${t2.color}; backdrop-filter:blur(8px);">
                             <span style="font-family:var(--font-display); font-weight:800; font-size:1.05rem; color:#fff;">${t2.name}</span>
-                            <span style="font-family:var(--font-mono); font-weight:900; font-size:0.88rem; color:${t2.color};">(${raceScore2} PTS)</span>
+                            <span style="font-family:var(--font-mono); font-weight:900; font-size:0.95rem; color:#ffffff; text-shadow:0 0 8px rgba(255,255,255,0.9), 0 0 16px rgba(255,255,255,0.6);">(${raceScore2} PTS)</span>
                           </div>
                         </div>
 
@@ -863,9 +860,9 @@ class ChampionshipView {
                                   <div style="flex:1; font-family:var(--font-display); font-weight:700; font-size:0.92rem; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">
                                     ${driver.name}
                                   </div>
-                                  <!-- Points -->
-                                  <div style="font-family:var(--font-mono); font-weight:800; font-size:0.85rem; color:${pts > 0 ? 'var(--accent-gold)' : 'var(--text-muted)'}; background:rgba(0,0,0,0.35); padding:0.15rem 0.5rem; border-radius:12px; border:1px solid rgba(255,215,0,0.15);">
-                                    ${pos ? (pos === 'DNF' ? 'DNF (0)' : `+${pts} PTS`) : '0 PTS'}
+                                  <!-- Points (White + Glowing, No + Sign) -->
+                                  <div style="font-family:var(--font-mono); font-weight:900; font-size:0.9rem; color:#ffffff; text-shadow:0 0 8px rgba(255,255,255,0.9), 0 0 16px rgba(255,255,255,0.6), 0 0 24px rgba(255,255,255,0.35); background:rgba(0,0,0,0.45); padding:0.2rem 0.65rem; border-radius:14px; border:1px solid rgba(255,255,255,0.18); letter-spacing:0.5px;">
+                                    ${pos ? (pos === 'DNF' ? '0 PTS' : `${pts} PTS`) : '0 PTS'}
                                   </div>
                                 </div>
                               `;
@@ -888,9 +885,9 @@ class ChampionshipView {
                                   <div style="flex:1; font-family:var(--font-display); font-weight:700; font-size:0.92rem; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">
                                     ${driver.name}
                                   </div>
-                                  <!-- Points -->
-                                  <div style="font-family:var(--font-mono); font-weight:800; font-size:0.85rem; color:${pts > 0 ? 'var(--accent-gold)' : 'var(--text-muted)'}; background:rgba(0,0,0,0.35); padding:0.15rem 0.5rem; border-radius:12px; border:1px solid rgba(255,215,0,0.15);">
-                                    ${pos ? (pos === 'DNF' ? 'DNF (0)' : `+${pts} PTS`) : '0 PTS'}
+                                  <!-- Points (White + Glowing, No + Sign) -->
+                                  <div style="font-family:var(--font-mono); font-weight:900; font-size:0.9rem; color:#ffffff; text-shadow:0 0 8px rgba(255,255,255,0.9), 0 0 16px rgba(255,255,255,0.6), 0 0 24px rgba(255,255,255,0.35); background:rgba(0,0,0,0.45); padding:0.2rem 0.65rem; border-radius:14px; border:1px solid rgba(255,255,255,0.18); letter-spacing:0.5px;">
+                                    ${pos ? (pos === 'DNF' ? '0 PTS' : `${pts} PTS`) : '0 PTS'}
                                   </div>
                                 </div>
                               `;
