@@ -143,7 +143,8 @@ class TournamentBoxView {
   triggerBoxDraw() {
     const { currentUser, tournamentRounds = [{ id: 'round_qualifiers', name: 'Qualifiers', isLocked: false }], activeTournamentRoundId = 'round_qualifiers' } = store.getState();
     const isAdmin = Boolean(currentUser && currentUser.isAuthenticated);
-    const activeRound = tournamentRounds.find((r) => r.id === activeTournamentRoundId) || tournamentRounds[0];
+    const targetRoundId = this.localSelectedRoundId || activeTournamentRoundId || tournamentRounds[0]?.id;
+    const activeRound = tournamentRounds.find((r) => r.id === targetRoundId) || tournamentRounds[0];
 
     if (!isAdmin) {
       if (window.app) window.app.showToast('Box opening is controlled by the Race Control Admin.', 'info');
@@ -326,7 +327,8 @@ class TournamentBoxView {
     if (!currentUser?.isAuthenticated) return;
     if (!this.pendingTeam1 || !this.pendingTeam2) return;
 
-    const activeRound = tournamentRounds.find((r) => r.id === activeTournamentRoundId) || tournamentRounds[0];
+    const targetRoundId = this.localSelectedRoundId || activeTournamentRoundId || tournamentRounds[0]?.id;
+    const activeRound = tournamentRounds.find((r) => r.id === targetRoundId) || tournamentRounds[0];
     const team1 = this.pendingTeam1;
     const team2 = this.pendingTeam2;
 
@@ -358,13 +360,7 @@ class TournamentBoxView {
 
   // --- ROUND MANAGEMENT ACTIONS ---
   selectRound(roundId) {
-    const { currentUser } = store.getState();
-    const isAdmin = Boolean(currentUser && currentUser.isAuthenticated);
-    if (isAdmin) {
-      store.setActiveTournamentRound(roundId);
-    } else {
-      this.localSelectedRoundId = roundId;
-    }
+    this.localSelectedRoundId = roundId;
     this.syncTeamsFromStore(false);
     this.renderTournamentView();
   }
@@ -377,6 +373,7 @@ class TournamentBoxView {
     if (name && name.trim()) {
       const res = store.addTournamentRound(name.trim());
       if (res.success) {
+        this.localSelectedRoundId = res.round.id;
         this.syncTeamsFromStore(true);
         this.renderTournamentView();
         if (window.app) window.app.showToast(`New round created: ${res.round.name}`, 'success');
@@ -604,14 +601,11 @@ class TournamentBoxView {
     const allTeams = this.getAllAvailableTeams();
 
     if (this.localSelectedRoundId && !tournamentRounds.some((r) => r.id === this.localSelectedRoundId)) {
-      this.localSelectedRoundId = null;
+      this.localSelectedRoundId = tournamentRounds[0]?.id || 'round_qualifiers';
     }
 
-    const activeRoundId = isAdmin 
-      ? (activeTournamentRoundId || tournamentRounds[0]?.id)
-      : (this.localSelectedRoundId || activeTournamentRoundId || tournamentRounds[0]?.id);
-
-    const activeRound = tournamentRounds.find((r) => r.id === activeRoundId) || tournamentRounds[0];
+    const activeRoundId = this.localSelectedRoundId || tournamentRounds[0]?.id || 'round_qualifiers';
+    const activeRound = tournamentRounds.find((r) => r.id === activeRoundId) || tournamentRounds[0] || { id: 'round_qualifiers', name: 'Qualifiers', isLocked: false };
     const currentRoundMatchups = tournamentMatchups.filter((m) => (m.roundId || tournamentRounds[0]?.id) === activeRound.id);
 
     const confirmedTeamIds = new Set();
