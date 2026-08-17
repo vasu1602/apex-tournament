@@ -1252,16 +1252,6 @@ class ChampionshipView {
       `;
 
       const allSoloStandings = this.computeSoloDriverStandings(state);
-      let filteredSoloStandings = allSoloStandings;
-      if (this.soloSearchQuery && this.soloSearchQuery.trim()) {
-        const q = this.soloSearchQuery.trim().toLowerCase();
-        filteredSoloStandings = allSoloStandings.filter(d => 
-          d.name.toLowerCase().includes(q) || 
-          (d.team && d.team.name.toLowerCase().includes(q)) || 
-          (d.tier && d.tier.toLowerCase().includes(q))
-        );
-      }
-
       const topScorer = allSoloStandings[0] && allSoloStandings[0].totalPoints > 0 ? allSoloStandings[0] : null;
 
       const soloViewHtml = `
@@ -1316,14 +1306,6 @@ class ChampionshipView {
             </div>
           ` : ''}
 
-          <!-- Search Bar -->
-          <div style="display:flex; gap:0.75rem; align-items:center; justify-content:space-between; flex-wrap:wrap;">
-            <div class="search-input-wrap" style="max-width:340px; width:100%;">
-              <span>🔍</span>
-              <input type="text" placeholder="Search driver, team or tier..." value="${this.soloSearchQuery || ''}" oninput="window.championshipView.handleSoloSearch(this.value)">
-            </div>
-          </div>
-
           <!-- Drivers Table -->
           <div style="overflow-x:auto;">
             <table style="width:100%; border-collapse:collapse; font-size:0.88rem; text-align:left;">
@@ -1339,14 +1321,14 @@ class ChampionshipView {
                 </tr>
               </thead>
               <tbody>
-                ${filteredSoloStandings.length === 0 ? `
+                ${allSoloStandings.length === 0 ? `
                   <tr>
                     <td colspan="7" style="text-align:center; padding:3rem; color:var(--text-muted);">
-                      No drivers match your search query.
+                      No drivers registered yet.
                     </td>
                   </tr>
-                ` : filteredSoloStandings.map((driver, idx) => {
-                  const isLeader = idx === 0 && driver.totalPoints > 0 && !this.soloSearchQuery;
+                ` : allSoloStandings.map((driver, idx) => {
+                  const isLeader = idx === 0 && driver.totalPoints > 0;
                   const rankColor = idx === 0 ? 'var(--accent-gold)' : (idx === 1 ? '#e0e0e0' : (idx === 2 ? '#cd7f32' : 'var(--text-muted)'));
                   const t = driver.team;
 
