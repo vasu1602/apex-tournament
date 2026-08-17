@@ -101,7 +101,11 @@ class SyncBridge {
       }
 
       if (!window.firebase.apps || !window.firebase.apps.length) {
-        window.firebase.initializeApp(config);
+        window.firebase.initializeApp({
+          databaseURL: config.databaseURL,
+          projectId: config.projectId || 'apex-tournament-a845f',
+          apiKey: config.apiKey || 'AIzaSyApexTournamentAutoKey'
+        });
       }
       this.firebaseDb = window.firebase.database();
       this.isFirebaseConnected = true;
@@ -127,7 +131,11 @@ class SyncBridge {
       const stored = localStorage.getItem('apex_firebase_config');
       if (stored) return JSON.parse(stored);
     } catch (e) {}
-    return null;
+    return {
+      databaseURL: 'https://apex-tournament-a845f-default-rtdb.firebaseio.com',
+      projectId: 'apex-tournament-a845f',
+      apiKey: ''
+    };
   }
 
   saveFirebaseConfig(config) {
