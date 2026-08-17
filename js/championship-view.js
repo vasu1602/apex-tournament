@@ -307,9 +307,7 @@ class ChampionshipView {
         wins: 0,
         podiums: 0,
         top10: 0,
-        dnfs: 0,
-        bestFinish: '—',
-        bestFinishRank: 999
+        dnfs: 0
       };
     });
 
@@ -331,9 +329,7 @@ class ChampionshipView {
               wins: 0,
               podiums: 0,
               top10: 0,
-              dnfs: 0,
-              bestFinish: '—',
-              bestFinishRank: 999
+              dnfs: 0
             };
           }
         });
@@ -388,9 +384,7 @@ class ChampionshipView {
               wins: 0,
               podiums: 0,
               top10: 0,
-              dnfs: 0,
-              bestFinish: '—',
-              bestFinishRank: 999
+              dnfs: 0
             };
             targetDriver = driverStatsMap[key];
           }
@@ -399,16 +393,12 @@ class ChampionshipView {
             targetDriver.totalPoints += pts;
             targetDriver.racesPlayed += 1;
             
-            const rankNum = pos === 'DNF' ? 900 : parseInt(pos.replace(/\D/g, ''), 10);
-            if (pos === '1st' || rankNum === 1) targetDriver.wins += 1;
-            if (rankNum <= 3) targetDriver.podiums += 1;
-            if (rankNum <= 10) targetDriver.top10 += 1;
-            if (pos === 'DNF') targetDriver.dnfs += 1;
-
-            if (rankNum < targetDriver.bestFinishRank) {
-              targetDriver.bestFinishRank = rankNum;
-              targetDriver.bestFinish = pos;
+            const cleanPos = (pos || '').toString().trim().toLowerCase();
+            if (cleanPos === '1st' || cleanPos === '1') targetDriver.wins += 1;
+            if (cleanPos === '1st' || cleanPos === '2nd' || cleanPos === '3rd' || cleanPos === '1' || cleanPos === '2' || cleanPos === '3') {
+              targetDriver.podiums += 1;
             }
+            if (cleanPos === 'dnf') targetDriver.dnfs += 1;
           }
         });
       });
@@ -1353,14 +1343,13 @@ class ChampionshipView {
                   <th style="padding:0.65rem 0.85rem; text-align:center;">Races</th>
                   <th style="padding:0.65rem 0.85rem; text-align:center;">Wins (1st)</th>
                   <th style="padding:0.65rem 0.85rem; text-align:center;">Podiums</th>
-                  <th style="padding:0.65rem 0.85rem; text-align:center;">Best Finish</th>
                   <th style="padding:0.65rem 0.85rem; text-align:right;">Individual Points</th>
                 </tr>
               </thead>
               <tbody>
                 ${filteredSoloStandings.length === 0 ? `
                   <tr>
-                    <td colspan="8" style="text-align:center; padding:3rem; color:var(--text-muted);">
+                    <td colspan="7" style="text-align:center; padding:3rem; color:var(--text-muted);">
                       No drivers match your search query.
                     </td>
                   </tr>
@@ -1422,14 +1411,9 @@ class ChampionshipView {
                         ${driver.wins > 0 ? `${driver.wins} 🏆` : '0'}
                       </td>
 
-                      <!-- Podiums -->
+                      <!-- Podiums (1st, 2nd, 3rd) -->
                       <td style="padding:0.75rem 0.85rem; text-align:center; font-family:var(--font-mono); color:${driver.podiums > 0 ? 'var(--accent-cyan)' : 'var(--text-muted)'}; font-weight:700; font-size:0.92rem;">
                         ${driver.podiums}
-                      </td>
-
-                      <!-- Best Finish -->
-                      <td style="padding:0.75rem 0.85rem; text-align:center; font-family:var(--font-mono); font-weight:700; color:${driver.bestFinish === '1st' ? 'var(--accent-gold)' : (driver.bestFinish === '2nd' || driver.bestFinish === '3rd' ? 'var(--accent-green)' : 'var(--text-secondary)')}; font-size:0.9rem;">
-                        ${driver.bestFinish}
                       </td>
 
                       <!-- Total Individual Points (Glowing Pure White) -->
