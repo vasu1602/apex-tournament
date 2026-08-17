@@ -16,9 +16,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,400;0,600;0,700;1,700&family=Inter:wght@300;400;500;600;700;800&family=Rajdhani:wght@500;600;700;800&display=swap" rel="stylesheet">
   
   <!-- CSS Stylesheets -->
-  <link rel="stylesheet" href="styles/main.css?v=7.2">
-  <link rel="stylesheet" href="styles/animations.css?v=7.2">
-  <link rel="stylesheet" href="styles/components.css?v=7.2">
+  <link rel="stylesheet" href="styles/main.css?v=7.3">
+  <link rel="stylesheet" href="styles/animations.css?v=7.3">
+  <link rel="stylesheet" href="styles/components.css?v=7.3">
 </head>
 <body>
   <!-- Animated 60fps Canvas Background -->
@@ -52,6 +52,9 @@
         </button>
         <button class="nav-tab-btn" data-tab="tournament-view" id="nav-tournament-btn" onclick="window.app.switchTab('tournament-view');">
           Match-ups
+        </button>
+        <button class="nav-tab-btn" data-tab="championship-view" id="nav-championship-btn" onclick="window.app.switchTab('championship-view');">
+          Tournament
         </button>
         <button class="nav-tab-btn" data-tab="admin-view" id="nav-admin-btn" style="display:none;" onclick="window.app.switchTab('admin-view');">
           Race Control
@@ -135,10 +138,34 @@
         <div class="racers-grid" id="racers-container"></div>
       </section>
 
-      <!-- TAB 4: TOURNAMENT (MYSTERY BOX ARENA) -->
+      <!-- TAB 4: MATCH-UPS (MYSTERY BOX ARENA) -->
       <section id="tournament-view" class="tab-section"></section>
 
-      <!-- TAB 5: RACE CONTROL ADMIN DESK -->
+      <!-- TAB 5: TOURNAMENT -->
+      <section id="championship-view" class="tab-section">
+        <div class="section-header">
+          <div class="section-title-wrap">
+            <span class="section-tag">TOURNAMENT</span>
+            <h2 class="section-title">Championship Tournament</h2>
+          </div>
+          <p style="color:var(--text-secondary); font-size:0.85rem;">
+            Grand Championship Tournament stage and racing bracket.
+          </p>
+        </div>
+        <div id="championship-container" style="display:flex; flex-direction:column; gap:1.5rem;">
+          <div class="glass-card" style="text-align:center; padding: 4rem 1.5rem; border-top: 3px solid var(--accent-gold);">
+            <div style="font-size: 3.5rem; margin-bottom: 0.75rem;">🏆</div>
+            <h3 style="font-family: var(--font-display); font-size: 1.5rem; letter-spacing: 1px; margin-bottom: 0.5rem; text-transform: uppercase;">
+              Championship Tournament Arena
+            </h3>
+            <p style="color: var(--text-secondary); max-width: 520px; margin: 0 auto; font-size: 0.9rem;">
+              Championship tournament stage initialized and ready for configuration.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 6: RACE CONTROL ADMIN DESK -->
       <section id="admin-view" class="tab-section">
         <div id="admin-desk-view"></div>
       </section>
@@ -178,6 +205,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
 
   <!-- Main ES Module Script -->
-  <script type="module" src="js/app.js?v=7.2"></script> 
+  <script type="module" src="js/app.js?v=7.3"></script> 
 </body>
 </html>
