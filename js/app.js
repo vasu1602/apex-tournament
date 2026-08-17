@@ -7,6 +7,7 @@ import { viewerView } from './viewer-view.js';
 import { adminView } from './admin-view.js';
 import { imageCropper } from './image-cropper.js';
 import { tournamentBox } from './tournament-box.js';
+import { championshipView } from './championship-view.js';
 
 class AppController {
   constructor() {
@@ -19,10 +20,12 @@ class AppController {
     this.activeTab = savedTab;
     this.canvasBg = null;
     window.app = this;
+    window.championshipView = championshipView;
   }
 
   init() {
     window.app = this;
+    window.championshipView = championshipView;
 
     // 1. Initialize canvas background
     try {
@@ -35,6 +38,7 @@ class AppController {
       viewerView.init();
       adminView.init();
       tournamentBox.init();
+      championshipView.init();
     } catch (e) {
       console.warn('View init notice:', e);
     }
@@ -172,6 +176,12 @@ class AppController {
       tournamentBox.renderTournamentView('tournament-view');
     } catch (e) {
       console.error('Error rendering Tournament:', e);
+    }
+
+    try {
+      championshipView.renderChampionshipView('championship-container');
+    } catch (e) {
+      console.error('Error rendering Championship Tournament:', e);
     }
 
     // Render admin view only if authenticated

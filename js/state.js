@@ -1087,6 +1087,49 @@ class StateStore {
     }
   }
 
+  updateMatchScoring(matchupId, scoringData) {
+    if (!Array.isArray(this.state.tournamentMatchups)) return { success: false, message: 'No matchups available' };
+    const match = this.state.tournamentMatchups.find((m) => m.id === matchupId);
+    if (!match) return { success: false, message: 'Matchup not found' };
+
+    match.driverPositions = scoringData.driverPositions || match.driverPositions || {};
+    match.team1Score = Number(scoringData.team1Score) || 0;
+    match.team2Score = Number(scoringData.team2Score) || 0;
+    if (typeof scoringData.isLocked !== 'undefined') {
+      match.isLocked = Boolean(scoringData.isLocked);
+    }
+    if (typeof scoringData.winnerTeamId !== 'undefined') {
+      match.winnerTeamId = scoringData.winnerTeamId;
+      match.winnerId = scoringData.winnerTeamId;
+    }
+
+    this.saveState();
+    return { success: true, matchup: match };
+  }
+
+  lockMatchup(matchupId, isLocked = true) {
+    if (!Array.isArray(this.state.tournamentMatchups)) return { success: false };
+    const match = this.state.tournamentMatchups.find((m) => m.id === matchupId);
+    if (!match) return { success: false };
+
+    match.isLocked = Boolean(isLocked);
+    // Automatically set winner based on score if not set
+    if (match.isLocked) {
+      const score1 = Number(match.team1Score) || 0;
+      const score2 = Number(match.team2Score) || 0;
+      if (score1 > score2) {
+        match.winnerTeamId = match.team1?.id || null;
+        match.winnerId = match.team1?.id || null;
+      } else if (score2 > score1) {
+        match.winnerTeamId = match.team2?.id || null;
+        match.winnerId = match.team2?.id || null;
+      }
+    }
+
+    this.saveState();
+    return { success: true, matchup: match };
+  }
+
   clearTournamentMatchups(roundId = null) {
     if (roundId) {
       this.state.tournamentMatchups = (this.state.tournamentMatchups || []).filter((m) => (m.roundId || this.state.tournamentRounds[0]?.id) !== roundId);
@@ -1096,5 +1139,19 @@ class StateStore {
     this.saveState(true, true);
   }
 }
+
+export const POSITION_POINTS_MAP = {
+  '1st': 25,
+  '2nd': 18,
+  '3rd': 15,
+  '4th': 12,
+  '5th': 10,
+  '6th': 8,
+  '7th': 6,
+  '8th': 4,
+  '9th': 2,
+  '10th': 1,
+  'DNF': 0
+};
 
 export const store = new StateStore();
