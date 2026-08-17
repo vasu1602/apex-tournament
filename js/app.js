@@ -76,10 +76,11 @@ class AppController {
   }
 
   switchTab(tabId) {
+    if (!tabId) return;
     const state = store.getState();
     
     // Guard Race Control tab from unauthenticated viewers
-    if (tabId === 'admin-view' && !state.currentUser.isAuthenticated) {
+    if (tabId === 'admin-view' && !state.currentUser?.isAuthenticated) {
       this.openAccessCodeModal();
       return;
     }
@@ -99,8 +100,10 @@ class AppController {
     document.querySelectorAll('.tab-section').forEach((sec) => {
       if (sec.id === tabId) {
         sec.classList.add('active');
+        sec.style.display = 'block';
       } else {
         sec.classList.remove('active');
+        sec.style.display = 'none';
       }
     });
 
