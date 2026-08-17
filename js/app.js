@@ -10,7 +10,13 @@ import { tournamentBox } from './tournament-box.js';
 
 class AppController {
   constructor() {
-    this.activeTab = 'live-arena-view';
+    let savedTab = 'live-arena-view';
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        savedTab = sessionStorage.getItem('apex_active_tab') || 'live-arena-view';
+      }
+    } catch (e) {}
+    this.activeTab = savedTab;
     this.canvasBg = null;
     window.app = this;
   }
@@ -39,10 +45,10 @@ class AppController {
       this.updateHeaderStats();
     });
 
-    // 3. Render initial views
-    this.renderCurrentView();
-    this.updateHeaderStats();
+    // 3. Render initial views and restore active tab
     this.setupEventListeners();
+    this.switchTab(this.activeTab, false);
+    this.updateHeaderStats();
 
     // 4. Initial Sync Broadcast if this client is Admin or has state
     const currentState = store.getState();
@@ -75,7 +81,7 @@ class AppController {
     });
   }
 
-  switchTab(tabId) {
+  switchTab(tabId, smoothScroll = true) {
     if (!tabId) return;
     const state = store.getState();
     
@@ -86,6 +92,11 @@ class AppController {
     }
 
     this.activeTab = tabId;
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem('apex_active_tab', tabId);
+      }
+    } catch (e) {}
 
     // Update active tab buttons
     document.querySelectorAll('.nav-tab-btn').forEach((btn) => {
@@ -108,7 +119,9 @@ class AppController {
     });
 
     this.renderCurrentView();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (smoothScroll && typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   }
 
   renderCurrentView() {

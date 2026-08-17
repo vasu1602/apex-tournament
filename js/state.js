@@ -72,6 +72,13 @@ class StateStore {
   }
 
   loadState() {
+    const toArray = (val, fallback = []) => {
+      if (!val) return fallback;
+      if (Array.isArray(val)) return val;
+      if (typeof val === 'object') return Object.values(val);
+      return fallback;
+    };
+
     try {
       if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
         const serialized = localStorage.getItem(STORAGE_KEY);
@@ -86,9 +93,8 @@ class StateStore {
               codeId: null
             };
 
-            let accessCodes = Array.isArray(parsed.accessCodes) && parsed.accessCodes.length > 0
-              ? parsed.accessCodes
-              : DEFAULT_ACCESS_CODES;
+            let accessCodes = toArray(parsed.accessCodes, DEFAULT_ACCESS_CODES);
+            if (accessCodes.length === 0) accessCodes = DEFAULT_ACCESS_CODES;
 
             // Ensure SOULCITYS3FULL and SOULCITYS3 are present and active
             const hasFull = accessCodes.some((c) => c.code === 'SOULCITYS3FULL');
@@ -97,16 +103,22 @@ class StateStore {
               accessCodes = DEFAULT_ACCESS_CODES;
             }
 
+            const parsedTeams = toArray(parsed.teams, DEFAULT_TEAMS);
+            const parsedRacers = toArray(parsed.racers, DEFAULT_RACERS);
+            const parsedRounds = toArray(parsed.tournamentRounds, INITIAL_STATE.tournamentRounds);
+            const parsedMatchups = toArray(parsed.tournamentMatchups, []);
+            const parsedHistory = toArray(parsed.auctionHistory, []);
+
             return {
               ...INITIAL_STATE,
               tournamentName: parsed.tournamentName || INITIAL_STATE.tournamentName,
-              teams: Array.isArray(parsed.teams) ? parsed.teams : [],
-              racers: Array.isArray(parsed.racers) ? parsed.racers : [],
-              tournamentRounds: Array.isArray(parsed.tournamentRounds) && parsed.tournamentRounds.length > 0 ? parsed.tournamentRounds : INITIAL_STATE.tournamentRounds,
+              teams: parsedTeams,
+              racers: parsedRacers,
+              tournamentRounds: parsedRounds.length > 0 ? parsedRounds : INITIAL_STATE.tournamentRounds,
               activeTournamentRoundId: parsed.activeTournamentRoundId || 'round_qualifiers',
-              tournamentMatchups: Array.isArray(parsed.tournamentMatchups) ? parsed.tournamentMatchups : [],
+              tournamentMatchups: parsedMatchups,
               activeAuction: parsed.activeAuction || INITIAL_STATE.activeAuction,
-              auctionHistory: Array.isArray(parsed.auctionHistory) ? parsed.auctionHistory : [],
+              auctionHistory: parsedHistory,
               accessCodes,
               currentUser: savedSession,
               updatedAt: Number(parsed.updatedAt) || Date.now()
@@ -170,54 +182,61 @@ class StateStore {
 
   // Receive state from other tabs & cloud sync
   applyExternalState(newState) {
+    if (!newState || typeof newState !== 'object') return;
     const currentSession = this.state.currentUser;
     const incomingTime = Number(newState.updatedAt) || Date.now();
 
-    const incomingMatchups = Array.isArray(newState.tournamentMatchups) ? newState.tournamentMatchups : null;
-    const incomingRounds = Array.isArray(newState.tournamentRounds) && newState.tournamentRounds.length > 0 
-      ? newState.tournamentRounds 
-      : (this.state.tournamentRounds || INITIAL_STATE.tournamentRounds);
+    const toArray = (val, fallback = []) => {
+      if (!val) return fallback;
+      if (Array.isArray(val)) return val;
+      if (typeof val === 'object') return Object.values(val);
+      return fallback;
+    };
 
+    const incomingRounds = toArray(newState.tournamentRounds, this.state.tournamentRounds || INITIAL_STATE.tournamentRounds);
+    const finalRounds = incomingRounds.length > 0 ? incomingRounds : (this.state.tournamentRounds || INITIAL_STATE.tournamentRounds);
+
+    const incomingMatchups = typeof newState.tournamentMatchups !== 'undefined' ? toArray(newState.tournamentMatchups, []) : null;
     let finalMatchups = this.state.tournamentMatchups || [];
-    if (incomingMatchups) {
+    if (incomingMatchups !== null) {
       if (incomingMatchups.length > 0 || newState.isExplicitClear || incomingTime >= (this.state.updatedAt || 0)) {
         finalMatchups = incomingMatchups;
       }
     }
 
-    const incomingRacers = Array.isArray(newState.racers) ? newState.racers : null;
+    const incomingRacers = typeof newState.racers !== 'undefined' ? toArray(newState.racers, []) : null;
     let finalRacers = this.state.racers || [];
-    if (incomingRacers) {
+    if (incomingRacers !== null) {
       if (incomingRacers.length > 0 || newState.isExplicitClear || incomingTime >= (this.state.updatedAt || 0)) {
         finalRacers = incomingRacers;
       }
     }
 
-    const incomingTeams = Array.isArray(newState.teams) ? newState.teams : null;
+    const incomingTeams = typeof newState.teams !== 'undefined' ? toArray(newState.teams, []) : null;
     let finalTeams = this.state.teams || [];
-    if (incomingTeams) {
+    if (incomingTeams !== null) {
       if (incomingTeams.length > 0 || newState.isExplicitClear || incomingTime >= (this.state.updatedAt || 0)) {
         finalTeams = incomingTeams;
       }
     }
 
     // Filter matchups so no orphan matchups from deleted rounds remain
-    const validRoundIds = new Set(incomingRounds.map(r => r.id));
-    finalMatchups = finalMatchups.filter(m => validRoundIds.has(m.roundId || incomingRounds[0]?.id));
+    const validRoundIds = new Set(finalRounds.map(r => r.id));
+    finalMatchups = finalMatchups.filter(m => validRoundIds.has(m.roundId || finalRounds[0]?.id));
 
     const finalActiveRoundId = validRoundIds.has(newState.activeTournamentRoundId)
       ? newState.activeTournamentRoundId
-      : (validRoundIds.has(this.state.activeTournamentRoundId) ? this.state.activeTournamentRoundId : incomingRounds[0]?.id);
+      : (validRoundIds.has(this.state.activeTournamentRoundId) ? this.state.activeTournamentRoundId : finalRounds[0]?.id);
 
     this.state = {
       ...this.state,
       tournamentName: newState.tournamentName || this.state.tournamentName,
       teams: finalTeams,
       racers: finalRacers,
-      accessCodes: Array.isArray(newState.accessCodes) ? newState.accessCodes : (this.state.accessCodes || DEFAULT_ACCESS_CODES),
+      accessCodes: toArray(newState.accessCodes, this.state.accessCodes || DEFAULT_ACCESS_CODES),
       activeAuction: newState.activeAuction || this.state.activeAuction,
-      auctionHistory: Array.isArray(newState.auctionHistory) ? newState.auctionHistory : this.state.auctionHistory,
-      tournamentRounds: incomingRounds,
+      auctionHistory: toArray(newState.auctionHistory, this.state.auctionHistory || []),
+      tournamentRounds: finalRounds,
       activeTournamentRoundId: finalActiveRoundId,
       tournamentMatchups: finalMatchups,
       currentUser: currentSession,
@@ -227,20 +246,7 @@ class StateStore {
     // Persist to local storage so future page reloads retain this latest state
     try {
       if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-        const stateToPersist = {
-          tournamentName: this.state.tournamentName,
-          teams: this.state.teams,
-          racers: this.state.racers,
-          accessCodes: this.state.accessCodes,
-          activeAuction: this.state.activeAuction,
-          auctionHistory: this.state.auctionHistory,
-          tournamentRounds: this.state.tournamentRounds,
-          activeTournamentRoundId: this.state.activeTournamentRoundId,
-          tournamentMatchups: this.state.tournamentMatchups,
-          currentUser: currentSession,
-          updatedAt: incomingTime
-        };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToPersist));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
       }
     } catch (e) {
       console.warn('Could not persist sync state to localStorage:', e);
