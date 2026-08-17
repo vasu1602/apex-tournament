@@ -1278,11 +1278,6 @@ class ChampionshipView {
                 Solo Driver Championship Standings
               </h3>
             </div>
-            <div style="display:flex; align-items:center; gap:0.6rem;">
-              <span style="font-size:0.78rem; color:var(--text-muted);">
-                ${allSoloStandings.length} Drivers Ranked • Auto-Sorted by Points
-              </span>
-            </div>
           </div>
 
           <!-- Highlight Stats Banner (If top driver exists) -->
@@ -1321,14 +1316,11 @@ class ChampionshipView {
             </div>
           ` : ''}
 
-          <!-- Search Bar & Scoring Standard -->
+          <!-- Search Bar -->
           <div style="display:flex; gap:0.75rem; align-items:center; justify-content:space-between; flex-wrap:wrap;">
             <div class="search-input-wrap" style="max-width:340px; width:100%;">
               <span>🔍</span>
               <input type="text" placeholder="Search driver, team or tier..." value="${this.soloSearchQuery || ''}" oninput="window.championshipView.handleSoloSearch(this.value)">
-            </div>
-            <div style="font-size:0.75rem; color:var(--text-muted); font-family:var(--font-mono);">
-              Standard: 1st (+25) • 2nd (+18) • 3rd (+15) • 4th (+12) • 5th (+10) • 6th (+8) • 7th (+6) • 8th (+4) • 9th (+2) • 10th (+1) • DNF (0)
             </div>
           </div>
 
