@@ -319,6 +319,12 @@ class SyncBridge {
     this.isApplyingRemoteState = true;
     try {
       store.applyExternalState(remoteData);
+      if (typeof remoteData.pendingTeam1 !== 'undefined' && window.tournamentBox && !window.tournamentBox.isDrawing) {
+        window.tournamentBox.pendingTeam1 = remoteData.pendingTeam1;
+      }
+      if (typeof remoteData.pendingTeam2 !== 'undefined' && window.tournamentBox && !window.tournamentBox.isDrawing) {
+        window.tournamentBox.pendingTeam2 = remoteData.pendingTeam2;
+      }
     } finally {
       setTimeout(() => {
         this.isApplyingRemoteState = false;
@@ -337,6 +343,8 @@ class SyncBridge {
       tournamentRounds: fullState.tournamentRounds || [],
       activeTournamentRoundId: fullState.activeTournamentRoundId || 'round_qualifiers',
       tournamentMatchups: fullState.tournamentMatchups || [],
+      pendingTeam1: window.tournamentBox?.pendingTeam1 || null,
+      pendingTeam2: window.tournamentBox?.pendingTeam2 || null,
       updatedAt: Date.now(),
       updatedBy: fullState.currentUser?.adminName || 'Admin',
       isExplicitClear
