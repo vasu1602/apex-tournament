@@ -659,6 +659,23 @@ class ChampionshipView {
       // 2. VIEWER MATCH-UPS & SERIES CARDS WITH TAP-TO-INSPECT RACES AND CAPSULE RACER POINTS
       let viewerMatchCardsHtml = '';
       if (tournamentMatchups.length > 0) {
+        // Filter: Viewers only see finalized (locked) matchups + only the single NEXT active matchup
+        let visibleViewerMatches = tournamentMatchups;
+        if (!isAdmin) {
+          visibleViewerMatches = [];
+          let foundNextUnlocked = false;
+          for (const m of tournamentMatchups) {
+            if (m.isLocked) {
+              visibleViewerMatches.push(m);
+            } else if (!foundNextUnlocked) {
+              visibleViewerMatches.push(m);
+              foundNextUnlocked = true;
+            }
+          }
+        }
+
+        const hiddenMatchesCount = tournamentMatchups.length - visibleViewerMatches.length;
+
         viewerMatchCardsHtml = `
           <!-- TOURNAMENT MATCHES (TAP TO INSPECT RACES & RACER POINTS) -->
           <div class="glass-card" style="border-top: 3px solid var(--accent-cyan); width: 100%; padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem;">
@@ -669,7 +686,7 @@ class ChampionshipView {
                   Championship Tournament Matches
                 </h3>
               </div>
-              <span style="font-size:0.78rem; color:var(--text-muted);">${tournamentMatchups.length} Match-ups Scheduled</span>
+              <span style="font-size:0.78rem; color:var(--text-muted);">${visibleViewerMatches.length} of ${tournamentMatchups.length} Match-ups Live</span>
             </div>
 
             <p style="font-size:0.82rem; color:var(--text-secondary); margin:0 0 0.5rem;">
@@ -677,7 +694,7 @@ class ChampionshipView {
             </p>
 
             <div style="display:flex; flex-direction:column; gap:1.25rem;">
-              ${tournamentMatchups.map((match, mIdx) => {
+              ${visibleViewerMatches.map((match, mIdx) => {
                 const t1 = this.resolveTeam(match.team1, teams);
                 const t2 = this.resolveTeam(match.team2, teams);
                 const matchFmt = (match.seriesFormat || 'bo3').toUpperCase();
@@ -901,6 +918,13 @@ class ChampionshipView {
                   </div>
                 `;
               }).join('')}
+
+              ${!isAdmin && hiddenMatchesCount > 0 ? `
+                <div style="text-align:center; padding:1rem 1.25rem; color:var(--text-muted); font-size:0.82rem; background:rgba(18,23,36,0.4); border-radius:var(--radius-md); border:1px dashed rgba(255,255,255,0.08); display:flex; align-items:center; justify-content:center; gap:0.6rem; font-family:var(--font-display); letter-spacing:0.5px;">
+                  <span style="font-size:1.1rem;">🔒</span>
+                  <span><strong>${hiddenMatchesCount} Upcoming Match${hiddenMatchesCount > 1 ? 'es' : ''} Scheduled</strong> — Will automatically unlock live as current matches are finalized by Race Control.</span>
+                </div>
+              ` : ''}
             </div>
           </div>
         `;
