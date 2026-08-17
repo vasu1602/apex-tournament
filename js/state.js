@@ -1092,6 +1092,14 @@ class StateStore {
     const match = this.state.tournamentMatchups.find((m) => m.id === matchupId);
     if (!match) return { success: false, message: 'Matchup not found' };
 
+    if (scoringData.seriesFormat) match.seriesFormat = scoringData.seriesFormat;
+    if (typeof scoringData.activeGameIndex !== 'undefined') match.activeGameIndex = scoringData.activeGameIndex;
+    if (scoringData.games) match.games = scoringData.games;
+    if (typeof scoringData.seriesWins1 !== 'undefined') match.seriesWins1 = Number(scoringData.seriesWins1) || 0;
+    if (typeof scoringData.seriesWins2 !== 'undefined') match.seriesWins2 = Number(scoringData.seriesWins2) || 0;
+    if (typeof scoringData.totalScore1 !== 'undefined') match.totalScore1 = Number(scoringData.totalScore1) || 0;
+    if (typeof scoringData.totalScore2 !== 'undefined') match.totalScore2 = Number(scoringData.totalScore2) || 0;
+
     match.driverPositions = scoringData.driverPositions || match.driverPositions || {};
     match.team1Score = Number(scoringData.team1Score) || 0;
     match.team2Score = Number(scoringData.team2Score) || 0;
@@ -1113,11 +1121,20 @@ class StateStore {
     if (!match) return { success: false };
 
     match.isLocked = Boolean(isLocked);
-    // Automatically set winner based on score if not set
+    // Automatically set winner based on series wins or total points
     if (match.isLocked) {
-      const score1 = Number(match.team1Score) || 0;
-      const score2 = Number(match.team2Score) || 0;
-      if (score1 > score2) {
+      const wins1 = Number(match.seriesWins1) || 0;
+      const wins2 = Number(match.seriesWins2) || 0;
+      const score1 = Number(match.totalScore1) || Number(match.team1Score) || 0;
+      const score2 = Number(match.totalScore2) || Number(match.team2Score) || 0;
+
+      if (wins1 > wins2) {
+        match.winnerTeamId = match.team1?.id || null;
+        match.winnerId = match.team1?.id || null;
+      } else if (wins2 > wins1) {
+        match.winnerTeamId = match.team2?.id || null;
+        match.winnerId = match.team2?.id || null;
+      } else if (score1 > score2) {
         match.winnerTeamId = match.team1?.id || null;
         match.winnerId = match.team1?.id || null;
       } else if (score2 > score1) {
