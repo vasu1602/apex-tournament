@@ -328,29 +328,32 @@ class ViewerView {
         ` : `
           <div class="racers-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">
             ${displayHistoryRacers.map((racer) => {
-              const photoSrc = racer.photoUrl || racer.avatar;
-              const soldTeam = racer.soldToTeamId ? teams.find((t) => t.id === racer.soldToTeamId) : null;
-              const racerTier = racer.tier || racer.category || 'Tier S';
+              if (!racer) return '';
+              const photoSrc = racer.photoUrl || racer.avatar || 'assets/avatars/default.png';
+              const soldTeam = racer.soldToTeamId ? teams.find((t) => t && t.id === racer.soldToTeamId) : null;
+              const racerTier = String(racer.tier || racer.category || 'Tier S');
               const tierCode = racerTier.replace('Tier ', '').trim().toLowerCase();
               const isSold = racer.status === 'sold';
+              const basePtsNum = Number(racer.basePoints) || 0;
+              const finalPriceNum = Number(racer.soldPoints) || basePtsNum;
 
               return `
                 <div class="racer-card" style="border-top: 3px solid ${isSold ? (soldTeam ? soldTeam.color : 'var(--accent-gold)') : 'var(--accent-red)'};">
                   <div class="racer-card-image-box">
                     <span class="racer-card-cat-badge tier-badge-${tierCode}">${racerTier}</span>
-                    <span class="racer-status-badge badge-${racer.status} racer-card-status-badge">
+                    <span class="racer-status-badge badge-${racer.status || 'upcoming'} racer-card-status-badge">
                       ${isSold ? 'SOLD' : 'UNSOLD'}
                     </span>
-                    <img src="${photoSrc}" alt="${racer.name}" class="racer-card-img">
+                    <img src="${photoSrc}" alt="${racer.name || 'Racer'}" class="racer-card-img">
                   </div>
 
                   <div class="racer-card-body" style="padding: 1rem; gap: 0.75rem;">
                     <div>
-                      <div class="racer-card-name" style="font-size: 1.05rem;">${racer.name}</div>
+                      <div class="racer-card-name" style="font-size: 1.05rem;">${racer.name || 'Unnamed Pilot'}</div>
                       <div style="font-size: 0.75rem; color: var(--text-secondary); display:flex; align-items:center; gap:0.4rem; margin-top:2px;">
                         <span>${racerTier}</span>
                         <span>•</span>
-                        <span>Base: ${racer.basePoints.toLocaleString()} PTS</span>
+                        <span>Base: ${basePtsNum.toLocaleString()} PTS</span>
                       </div>
                     </div>
 
@@ -360,7 +363,7 @@ class ViewerView {
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                           <span style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; font-weight:700;">Final Sale Price</span>
                           <span style="font-family: var(--font-mono); font-size: 1.05rem; font-weight: 800; color: var(--accent-gold);">
-                            ${(racer.soldPoints || racer.basePoints).toLocaleString()} PTS
+                            ${finalPriceNum.toLocaleString()} PTS
                           </span>
                         </div>
                         <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(255,255,255,0.05); padding-top:0.35rem;">
