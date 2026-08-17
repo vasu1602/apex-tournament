@@ -162,18 +162,11 @@ class ChampionshipView {
       else if (g.winnerTeamId === team2.id || g.team2Score > g.team1Score) seriesWins2 += 1;
     });
 
-    let overallWinnerTeamId = currentMatch.winnerTeamId || null;
-    const winsNeeded = format === 'bo5' ? 3 : (format === 'bo3' ? 2 : 1);
-
-    if (seriesWins1 >= winsNeeded) {
+    let overallWinnerTeamId = null;
+    if (totalScore1 > totalScore2) {
       overallWinnerTeamId = team1.id;
-    } else if (seriesWins2 >= winsNeeded) {
+    } else if (totalScore2 > totalScore1) {
       overallWinnerTeamId = team2.id;
-    } else if (currentMatch.isLocked) {
-      if (seriesWins1 > seriesWins2) overallWinnerTeamId = team1.id;
-      else if (seriesWins2 > seriesWins1) overallWinnerTeamId = team2.id;
-      else if (totalScore1 > totalScore2) overallWinnerTeamId = team1.id;
-      else if (totalScore2 > totalScore1) overallWinnerTeamId = team2.id;
     }
 
     const res = store.updateMatchScoring(currentMatch.id, {
@@ -388,13 +381,13 @@ class ChampionshipView {
           standingsMap[t1.id].totalPoints += s1;
           standingsMap[t1.id].raceWins += w1;
           if (m.isLocked || s1 > 0 || s2 > 0) standingsMap[t1.id].seriesPlayed += 1;
-          if (m.winnerTeamId === t1.id || (m.isLocked && (w1 > w2 || s1 > s2))) standingsMap[t1.id].seriesWon += 1;
+          if (s1 > s2 && (m.isLocked || m.winnerTeamId === t1.id)) standingsMap[t1.id].seriesWon += 1;
         }
         if (standingsMap[t2.id]) {
           standingsMap[t2.id].totalPoints += s2;
           standingsMap[t2.id].raceWins += w2;
           if (m.isLocked || s1 > 0 || s2 > 0) standingsMap[t2.id].seriesPlayed += 1;
-          if (m.winnerTeamId === t2.id || (m.isLocked && (w2 > w1 || s2 > s1))) standingsMap[t2.id].seriesWon += 1;
+          if (s2 > s1 && (m.isLocked || m.winnerTeamId === t2.id)) standingsMap[t2.id].seriesWon += 1;
         }
       });
 
@@ -751,7 +744,7 @@ class ChampionshipView {
                       <div style="display:flex; align-items:center; gap:0.5rem;">
                         ${match.isLocked ? `
                           <span class="section-tag" style="background:rgba(0,255,136,0.15); color:#00ff88; border-color:#00ff8855; font-size:0.75rem;">
-                            🏆 FINALIZED ${match.winnerTeamId === t1.id ? `(${t1.name} Won)` : match.winnerTeamId === t2.id ? `(${t2.name} Won)` : ''}
+                            🏆 FINALIZED ${mTotalPts1 > mTotalPts2 ? `(${t1.name} Won)` : (mTotalPts2 > mTotalPts1 ? `(${t2.name} Won)` : (match.winnerTeamId === t1.id ? `(${t1.name} Won)` : match.winnerTeamId === t2.id ? `(${t2.name} Won)` : ''))}
                           </span>
                         ` : `
                           <div class="live-indicator">
