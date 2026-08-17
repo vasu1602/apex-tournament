@@ -674,10 +674,6 @@ class TournamentBoxView {
                 `}
               </div>
             </div>
-
-            <div style="font-size:0.78rem; color:var(--text-muted); margin-top:0.75rem;">
-              ${!this.pendingTeam1 ? 'Waiting for Race Control Admin to draw Crew 1 from vault...' : (!this.pendingTeam2 ? 'Crew 1 drawn! Waiting for opposing Crew 2 draw...' : 'Matchup formed! Locking fixture into official board...')}
-            </div>
           </div>
 
           <!-- SAVED OFFICIAL TOURNAMENT FIXTURES BOARD -->
@@ -708,10 +704,6 @@ class TournamentBoxView {
                 ${activeRound.isLocked ? `
                   <span class="round-locked-banner">🔒 LOCKED</span>
                 ` : ''}
-              </div>
-
-              <div style="font-size:0.75rem; color:var(--text-muted);">
-                Tap team name to inspect driver roster
               </div>
             </div>
 
@@ -873,10 +865,7 @@ class TournamentBoxView {
               ${ctaButtonText}
             </button>
 
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
-              <span style="font-size:0.78rem; color:var(--text-muted);">
-                ${helperSubtitleText}
-              </span>
+            <div style="display:flex; justify-content:flex-end; align-items:center; flex-wrap:wrap; gap:0.5rem;">
               <button class="btn btn-outline btn-sm" onclick="window.tournamentBox.resetBoxPool()" title="Refill box with all un-matched teams for this round" ${this.isDrawing || this.isCooldown || activeRound.isLocked ? 'disabled' : ''}>
                 Refill Box
               </button>
@@ -969,17 +958,12 @@ class TournamentBoxView {
             </div>
 
             <!-- Action Buttons (Admin Only) -->
-            ${isAdmin ? `
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:1rem; gap:0.5rem; flex-wrap:wrap;">
-                <div style="font-size:0.78rem; color:var(--text-muted);">
-                  ${activeRound.isLocked ? '🔒 Round is locked' : (!this.pendingTeam1 ? 'Click box on left to draw first crew' : (!this.pendingTeam2 ? 'Click box again to draw opposing crew' : '✅ Matchup locked & broadcasted!'))}
-                </div>
+            ${isAdmin && (this.pendingTeam1 || this.pendingTeam2) ? `
+              <div style="display:flex; justify-content:flex-end; align-items:center; margin-top:0.75rem; gap:0.5rem; flex-wrap:wrap;">
                 <div style="display:flex; gap:0.5rem;">
-                  ${this.pendingTeam1 || this.pendingTeam2 ? `
-                    <button class="btn btn-outline btn-sm" onclick="window.tournamentBox.clearSlots()">
-                      Clear Selection
-                    </button>
-                  ` : ''}
+                  <button class="btn btn-outline btn-sm" onclick="window.tournamentBox.clearSlots()">
+                    Clear Selection
+                  </button>
                   ${this.pendingTeam1 && this.pendingTeam2 && !activeRound.isLocked ? `
                     <button class="btn btn-cyan btn-sm" onclick="window.tournamentBox.confirmMatchup()">
                       ⚡ Lock Matchup
