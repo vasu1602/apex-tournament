@@ -1,5 +1,16 @@
 import { store } from './state.js';
 
+const DEFAULT_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyArQ39F-6ky0buhP1tsa1eHo537J8qhp4I",
+  authDomain: "apex-tournament-a845f.firebaseapp.com",
+  databaseURL: "https://apex-tournament-a845f-default-rtdb.firebaseio.com",
+  projectId: "apex-tournament-a845f",
+  storageBucket: "apex-tournament-a845f.firebasestorage.app",
+  messagingSenderId: "946691161430",
+  appId: "1:946691161430:web:751656194ecf1418326af7",
+  measurementId: "G-QNEKHR0WFM"
+};
+
 class SyncBridge {
   constructor() {
     this.channelName = 'apex_racing_auction_channel';
@@ -101,11 +112,7 @@ class SyncBridge {
       }
 
       if (!window.firebase.apps || !window.firebase.apps.length) {
-        window.firebase.initializeApp({
-          databaseURL: config.databaseURL,
-          projectId: config.projectId || 'apex-tournament-a845f',
-          apiKey: config.apiKey || 'AIzaSyApexTournamentAutoKey'
-        });
+        window.firebase.initializeApp(config);
       }
       this.firebaseDb = window.firebase.database();
       this.isFirebaseConnected = true;
@@ -131,11 +138,7 @@ class SyncBridge {
       const stored = localStorage.getItem('apex_firebase_config');
       if (stored) return JSON.parse(stored);
     } catch (e) {}
-    return {
-      databaseURL: 'https://apex-tournament-a845f-default-rtdb.firebaseio.com',
-      projectId: 'apex-tournament-a845f',
-      apiKey: ''
-    };
+    return DEFAULT_FIREBASE_CONFIG;
   }
 
   saveFirebaseConfig(config) {
