@@ -1233,19 +1233,19 @@ class ChampionshipView {
 
       const subNavBarHtml = `
         <!-- TOURNAMENT SUB-NAVIGATION (CREW / SOLO) -->
-        <div style="display:flex; justify-content:center; align-items:center; margin: 0 0 0.5rem;">
-          <div style="display:inline-flex; background:rgba(14,18,28,0.85); padding:0.35rem; border-radius:50px; border:1px solid rgba(0,242,254,0.25); box-shadow:0 4px 20px rgba(0,0,0,0.4); backdrop-filter:blur(10px); gap:0.35rem;">
+        <div style="display:flex; justify-content:center; align-items:center; margin: 0 0 1.25rem;">
+          <div class="nav-tabs" style="background:rgba(15, 19, 29, 0.85); padding:0.35rem; border-radius:var(--radius-pill); border:1px solid var(--border-subtle); box-shadow:0 4px 20px rgba(0,0,0,0.5); backdrop-filter:blur(10px); gap:0.4rem;">
             <button 
-              class="btn btn-sm ${this.tournamentSubMode === 'crew' ? 'btn-cyan' : 'btn-ghost'}" 
-              style="border-radius:50px; padding:0.45rem 1.6rem; font-family:var(--font-display); font-size:0.88rem; font-weight:800; letter-spacing:1px; text-transform:uppercase; transition:all 0.25s ease;"
+              class="nav-tab-btn ${this.tournamentSubMode === 'crew' ? 'active' : ''}" 
+              style="padding:0.5rem 2rem; font-size:0.88rem; font-weight:800; text-transform:uppercase; letter-spacing:1.2px;"
               onclick="window.championshipView.setTournamentSubMode('crew')">
-              🏁 Crew
+              Crew
             </button>
             <button 
-              class="btn btn-sm ${this.tournamentSubMode === 'solo' ? 'btn-cyan' : 'btn-ghost'}" 
-              style="border-radius:50px; padding:0.45rem 1.6rem; font-family:var(--font-display); font-size:0.88rem; font-weight:800; letter-spacing:1px; text-transform:uppercase; transition:all 0.25s ease;"
+              class="nav-tab-btn ${this.tournamentSubMode === 'solo' ? 'active' : ''}" 
+              style="padding:0.5rem 2rem; font-size:0.88rem; font-weight:800; text-transform:uppercase; letter-spacing:1.2px;"
               onclick="window.championshipView.setTournamentSubMode('solo')">
-              🏎️ Solo
+              Solo
             </button>
           </div>
         </div>
