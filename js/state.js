@@ -103,8 +103,8 @@ class StateStore {
               accessCodes = DEFAULT_ACCESS_CODES;
             }
 
-            const parsedTeams = toArray(parsed.teams, DEFAULT_TEAMS);
-            const parsedRacers = toArray(parsed.racers, DEFAULT_RACERS);
+            const parsedTeams = parsed.teams !== undefined ? toArray(parsed.teams, []) : DEFAULT_TEAMS;
+            const parsedRacers = parsed.racers !== undefined ? toArray(parsed.racers, []) : DEFAULT_RACERS;
             const parsedRounds = toArray(parsed.tournamentRounds, INITIAL_STATE.tournamentRounds);
             const parsedMatchups = toArray(parsed.tournamentMatchups, []);
             const parsedHistory = toArray(parsed.auctionHistory, []);
@@ -121,7 +121,7 @@ class StateStore {
               auctionHistory: parsedHistory,
               accessCodes,
               currentUser: savedSession,
-              updatedAt: Number(parsed.updatedAt) || Date.now()
+              updatedAt: Number(parsed.updatedAt) || 0
             };
           }
         }
@@ -129,7 +129,10 @@ class StateStore {
     } catch (e) {
       console.warn('Failed to load local state, using initial state:', e);
     }
-    return JSON.parse(JSON.stringify(INITIAL_STATE));
+    return {
+      ...JSON.parse(JSON.stringify(INITIAL_STATE)),
+      updatedAt: 0
+    };
   }
 
   saveState(broadcast = true, isExplicitClear = false) {
@@ -197,28 +200,13 @@ class StateStore {
     const finalRounds = incomingRounds.length > 0 ? incomingRounds : (this.state.tournamentRounds || INITIAL_STATE.tournamentRounds);
 
     const incomingMatchups = typeof newState.tournamentMatchups !== 'undefined' ? toArray(newState.tournamentMatchups, []) : null;
-    let finalMatchups = this.state.tournamentMatchups || [];
-    if (incomingMatchups !== null) {
-      if (incomingMatchups.length > 0 || newState.isExplicitClear || incomingTime >= (this.state.updatedAt || 0)) {
-        finalMatchups = incomingMatchups;
-      }
-    }
+    let finalMatchups = incomingMatchups !== null ? incomingMatchups : (this.state.tournamentMatchups || []);
 
     const incomingRacers = typeof newState.racers !== 'undefined' ? toArray(newState.racers, []) : null;
-    let finalRacers = this.state.racers || [];
-    if (incomingRacers !== null) {
-      if (incomingRacers.length > 0 || newState.isExplicitClear || incomingTime >= (this.state.updatedAt || 0)) {
-        finalRacers = incomingRacers;
-      }
-    }
+    let finalRacers = incomingRacers !== null ? incomingRacers : (this.state.racers || []);
 
     const incomingTeams = typeof newState.teams !== 'undefined' ? toArray(newState.teams, []) : null;
-    let finalTeams = this.state.teams || [];
-    if (incomingTeams !== null) {
-      if (incomingTeams.length > 0 || newState.isExplicitClear || incomingTime >= (this.state.updatedAt || 0)) {
-        finalTeams = incomingTeams;
-      }
-    }
+    let finalTeams = incomingTeams !== null ? incomingTeams : (this.state.teams || []);
 
     // Filter matchups so no orphan matchups from deleted rounds remain
     const validRoundIds = new Set(finalRounds.map(r => r.id));

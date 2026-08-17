@@ -49,16 +49,6 @@ class AppController {
     this.setupEventListeners();
     this.switchTab(this.activeTab, false);
     this.updateHeaderStats();
-
-    // 4. Initial Sync Broadcast if this client is Admin or has state
-    const currentState = store.getState();
-    if (currentState.currentUser?.isAuthenticated || (currentState.racers && currentState.racers.length > 0)) {
-      setTimeout(() => {
-        if (window.syncBridge) {
-          window.syncBridge.broadcastState(store.getState());
-        }
-      }, 400);
-    }
   }
 
   setupEventListeners() {

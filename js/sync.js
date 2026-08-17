@@ -383,13 +383,12 @@ class SyncBridge {
     const currentState = store.getState();
     const isAdmin = Boolean(currentState.currentUser && currentState.currentUser.isAuthenticated);
 
-    // If current tab is Admin, only ignore if incoming state is older
-    if (isAdmin) {
-      const remoteTime = Number(remoteData.updatedAt) || 0;
-      const localTime = Number(currentState.updatedAt) || 0;
-      if (remoteTime <= localTime) {
-        return;
-      }
+    const remoteTime = Number(remoteData.updatedAt) || 0;
+    const localTime = Number(currentState.updatedAt) || 0;
+
+    // If current tab is Admin and has newer local uncommitted state, ignore older remote updates
+    if (isAdmin && localTime > 0 && remoteTime > 0 && remoteTime < localTime) {
+      return;
     }
 
     // Hash state including racers, teams, matchups details (so any racer edit/delete triggers instant re-render)
@@ -505,7 +504,8 @@ class SyncBridge {
     }
 
     // 5. Save directly to Google Firebase Realtime Database (Persistent Cloud Storage)
-    if (this.firebaseDb && !this.isApplyingRemoteState) {
+    const isAdmin = Boolean(fullState.currentUser && fullState.currentUser.isAuthenticated);
+    if (this.firebaseDb && !this.isApplyingRemoteState && (isAdmin || isExplicitClear)) {
       try {
         this.firebaseDb.ref(`tournaments/${this.roomId}`).set(payloadToSync);
       } catch (err) {
