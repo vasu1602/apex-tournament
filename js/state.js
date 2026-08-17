@@ -56,6 +56,7 @@ export const INITIAL_STATE = {
   ],
   activeTournamentRoundId: 'round_qualifiers',
   tournamentMatchups: [],
+  showChampionshipStandingsToViewers: false,
   currentUser: {
     isAuthenticated: false,
     role: 'viewer',
@@ -117,6 +118,7 @@ class StateStore {
               tournamentRounds: parsedRounds.length > 0 ? parsedRounds : INITIAL_STATE.tournamentRounds,
               activeTournamentRoundId: parsed.activeTournamentRoundId || 'round_qualifiers',
               tournamentMatchups: parsedMatchups,
+              showChampionshipStandingsToViewers: Boolean(parsed.showChampionshipStandingsToViewers),
               activeAuction: parsed.activeAuction || INITIAL_STATE.activeAuction,
               auctionHistory: parsedHistory,
               accessCodes,
@@ -148,6 +150,7 @@ class StateStore {
         tournamentRounds: this.state.tournamentRounds || INITIAL_STATE.tournamentRounds,
         activeTournamentRoundId: this.state.activeTournamentRoundId || 'round_qualifiers',
         tournamentMatchups: this.state.tournamentMatchups || [],
+        showChampionshipStandingsToViewers: Boolean(this.state.showChampionshipStandingsToViewers),
         currentUser: this.state.currentUser,
         updatedAt: this.state.updatedAt,
         isExplicitClear
@@ -234,6 +237,7 @@ class StateStore {
       tournamentRounds: finalRounds,
       activeTournamentRoundId: finalActiveRoundId,
       tournamentMatchups: finalMatchups,
+      showChampionshipStandingsToViewers: typeof newState.showChampionshipStandingsToViewers !== 'undefined' ? Boolean(newState.showChampionshipStandingsToViewers) : Boolean(this.state.showChampionshipStandingsToViewers),
       currentUser: currentSession,
       updatedAt: incomingTime
     };
@@ -1140,6 +1144,18 @@ class StateStore {
 
     this.saveState();
     return { success: true, matchup: match };
+  }
+
+  setChampionshipStandingsVisibility(visible) {
+    this.state.showChampionshipStandingsToViewers = Boolean(visible);
+    this.saveState();
+    return { success: true, isVisible: this.state.showChampionshipStandingsToViewers };
+  }
+
+  toggleChampionshipStandingsVisibility() {
+    this.state.showChampionshipStandingsToViewers = !this.state.showChampionshipStandingsToViewers;
+    this.saveState();
+    return { success: true, isVisible: this.state.showChampionshipStandingsToViewers };
   }
 
   clearTournamentMatchups(roundId = null) {

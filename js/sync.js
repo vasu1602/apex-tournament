@@ -399,6 +399,7 @@ class SyncBridge {
       rounds: remoteData.tournamentRounds,
       activeRound: remoteData.activeTournamentRoundId,
       matchups: remoteData.tournamentMatchups,
+      standingsVisible: remoteData.showChampionshipStandingsToViewers,
       pending1: remoteData.pendingTeam1?.id,
       pending2: remoteData.pendingTeam2?.id,
       timestamp: remoteData.updatedAt
@@ -434,6 +435,7 @@ class SyncBridge {
       tournamentRounds: fullState.tournamentRounds || [],
       activeTournamentRoundId: fullState.activeTournamentRoundId || 'round_qualifiers',
       tournamentMatchups: fullState.tournamentMatchups || [],
+      showChampionshipStandingsToViewers: Boolean(fullState.showChampionshipStandingsToViewers),
       pendingTeam1: window.tournamentBox?.pendingTeam1 || null,
       pendingTeam2: window.tournamentBox?.pendingTeam2 || null,
       updatedAt: Date.now(),
@@ -449,6 +451,7 @@ class SyncBridge {
       rounds: payloadToSync.tournamentRounds,
       activeRound: payloadToSync.activeTournamentRoundId,
       matchups: payloadToSync.tournamentMatchups,
+      standingsVisible: payloadToSync.showChampionshipStandingsToViewers,
       pending1: payloadToSync.pendingTeam1?.id,
       pending2: payloadToSync.pendingTeam2?.id,
       timestamp: payloadToSync.updatedAt

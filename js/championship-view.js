@@ -69,6 +69,20 @@ class ChampionshipView {
     this.renderChampionshipView();
   }
 
+  toggleStandingsVisibility() {
+    const res = store.toggleChampionshipStandingsVisibility();
+    if (res.success && window.app) {
+      soundFX.play(res.isVisible ? 'sold' : 'click');
+      window.app.showToast(
+        res.isVisible 
+          ? '👁️ Championship Leaderboard is now PUBLISHED and visible to viewers!' 
+          : '🙈 Championship Leaderboard is now HIDDEN from viewers.',
+        res.isVisible ? 'success' : 'info'
+      );
+    }
+    this.renderChampionshipView();
+  }
+
   handlePositionChange(driverKey, newPos) {
     this.localPositions[driverKey] = newPos;
     this.saveCurrentMatchScoring(false);
@@ -280,7 +294,8 @@ class ChampionshipView {
         tournamentMatchups = [],
         teams = [],
         racers = [],
-        currentUser = { isAuthenticated: false, role: 'viewer', adminName: 'Spectator' }
+        currentUser = { isAuthenticated: false, role: 'viewer', adminName: 'Spectator' },
+        showChampionshipStandingsToViewers = false
       } = state;
 
       const isAdmin = Boolean(currentUser.isAuthenticated);
@@ -458,6 +473,10 @@ class ChampionshipView {
                     ${activeMatch.isLocked ? '🔓 UNLOCK MATCH' : '🔒 LOCK MATCH'}
                   </button>
                 ` : ''}
+
+                <button class="btn ${showChampionshipStandingsToViewers ? 'btn-green' : 'btn-outline'} btn-sm" style="font-size:0.8rem; padding:0.45rem 0.85rem; font-weight:800; display:flex; align-items:center; gap:0.35rem;" onclick="window.championshipView.toggleStandingsVisibility()" title="Toggle Leaderboard visibility for Spectators">
+                  ${showChampionshipStandingsToViewers ? '👁️ LEADERBOARD: PUBLISHED' : '🙈 LEADERBOARD: HIDDEN'}
+                </button>
               </div>
             </div>
 
@@ -923,84 +942,96 @@ class ChampionshipView {
         `;
       }
 
-      // 3. TOURNAMENT STANDINGS TABLE
-      const standingsHtml = `
-        <!-- TOURNAMENT OVERALL STANDINGS TABLE -->
-        <div class="glass-card" style="border-top: 3px solid var(--accent-gold); width: 100%; padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem;">
-          
-          <div class="section-header" style="margin-bottom:0;">
-            <div class="section-title-wrap">
-              <span class="section-tag" style="background:rgba(255,215,0,0.15); color:var(--accent-gold); border-color:rgba(255,215,0,0.3);">
-                STANDINGS
-              </span>
-              <h3 class="section-title" style="font-size:1.25rem;">
-                Tournament Championship Leaderboard
-              </h3>
+      // 3. TOURNAMENT STANDINGS TABLE (Visible to Admin always, and to Viewers only when published by Admin)
+      let standingsHtml = '';
+      if (isAdmin || showChampionshipStandingsToViewers) {
+        standingsHtml = `
+          <!-- TOURNAMENT OVERALL STANDINGS TABLE -->
+          <div class="glass-card" style="border-top: 3px solid var(--accent-gold); width: 100%; padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem;">
+            
+            <div class="section-header" style="margin-bottom:0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+              <div class="section-title-wrap">
+                <span class="section-tag" style="background:rgba(255,215,0,0.15); color:var(--accent-gold); border-color:rgba(255,215,0,0.3);">
+                  STANDINGS
+                </span>
+                <h3 class="section-title" style="font-size:1.25rem;">
+                  Tournament Championship Leaderboard
+                </h3>
+              </div>
+
+              <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                ${isAdmin ? `
+                  <button class="btn btn-sm ${showChampionshipStandingsToViewers ? 'btn-green' : 'btn-outline'}" style="font-size:0.78rem; padding:0.4rem 0.85rem; font-weight:800; display:flex; align-items:center; gap:0.4rem;" onclick="window.championshipView.toggleStandingsVisibility()">
+                    ${showChampionshipStandingsToViewers ? '👁️ PUBLISHED TO VIEWERS (Tap to Hide)' : '🙈 HIDDEN FROM VIEWERS (Tap to Publish)'}
+                  </button>
+                ` : `
+                  <span style="font-size:0.78rem; color:var(--text-muted);">${teams.length} Teams Registered</span>
+                `}
+              </div>
             </div>
-            <span style="font-size:0.78rem; color:var(--text-muted);">${teams.length} Teams Registered</span>
-          </div>
 
-          <!-- Table -->
-          <div style="overflow-x:auto;">
-            <table style="width:100%; border-collapse:collapse; font-size:0.88rem; text-align:left;">
-              <thead>
-                <tr style="border-bottom:1px solid var(--border-subtle); color:var(--text-muted); text-transform:uppercase; font-size:0.72rem; font-family:var(--font-display);">
-                  <th style="padding:0.6rem 0.85rem;">Rank</th>
-                  <th style="padding:0.6rem 0.85rem;">Racing Crew</th>
-                  <th style="padding:0.6rem 0.85rem; text-align:center;">Series Played</th>
-                  <th style="padding:0.6rem 0.85rem; text-align:center;">Series Won</th>
-                  <th style="padding:0.6rem 0.85rem; text-align:center;">Races Won</th>
-                  <th style="padding:0.6rem 0.85rem; text-align:right;">Championship Points</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${sortedStandings.length === 0 ? `
-                  <tr>
-                    <td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);">
-                      No racing teams registered.
-                    </td>
+            <!-- Table -->
+            <div style="overflow-x:auto;">
+              <table style="width:100%; border-collapse:collapse; font-size:0.88rem; text-align:left;">
+                <thead>
+                  <tr style="border-bottom:1px solid var(--border-subtle); color:var(--text-muted); text-transform:uppercase; font-size:0.72rem; font-family:var(--font-display);">
+                    <th style="padding:0.6rem 0.85rem;">Rank</th>
+                    <th style="padding:0.6rem 0.85rem;">Racing Crew</th>
+                    <th style="padding:0.6rem 0.85rem; text-align:center;">Series Played</th>
+                    <th style="padding:0.6rem 0.85rem; text-align:center;">Series Won</th>
+                    <th style="padding:0.6rem 0.85rem; text-align:center;">Races Won</th>
+                    <th style="padding:0.6rem 0.85rem; text-align:right;">Championship Points</th>
                   </tr>
-                ` : sortedStandings.map((item, idx) => {
-                  const t = item.team;
-                  const isFirst = idx === 0 && item.totalPoints > 0;
-                  const rankColor = idx === 0 ? 'var(--accent-gold)' : (idx === 1 ? '#e0e0e0' : (idx === 2 ? '#cd7f32' : 'var(--text-muted)'));
-
-                  return `
-                    <tr style="border-bottom:1px solid rgba(255,255,255,0.04); background:${isFirst ? 'rgba(255,215,0,0.04)' : 'transparent'};">
-                      <td style="padding:0.75rem 0.85rem; font-family:var(--font-mono); font-weight:800; font-size:1.1rem; color:${rankColor};">
-                        #${idx + 1}
-                      </td>
-                      <td style="padding:0.75rem 0.85rem;">
-                        <div style="display:flex; align-items:center; gap:0.65rem;">
-                          <div style="width:28px; height:28px; border-radius:4px; border:1px solid ${t.color || '#00e5ff'}; overflow:hidden; display:flex; align-items:center; justify-content:center;">
-                            ${t.logoUrl ? `<img src="${t.logoUrl}" style="width:100%; height:100%; object-fit:cover;">` : `<span>${t.logoIcon || '🏎️'}</span>`}
-                          </div>
-                          <span style="font-weight:700; color:#fff; font-size:0.95rem;">${t.name}</span>
-                          ${isFirst ? `<span class="section-tag" style="background:rgba(255,215,0,0.15); color:var(--accent-gold); border-color:var(--border-gold); font-size:0.65rem; padding:0.1rem 0.4rem;">LEADER</span>` : ''}
-                        </div>
-                      </td>
-                      <td style="padding:0.75rem 0.85rem; text-align:center; font-family:var(--font-mono); color:var(--text-secondary);">
-                        ${item.seriesPlayed}
-                      </td>
-                      <td style="padding:0.75rem 0.85rem; text-align:center; font-family:var(--font-mono); color:var(--accent-green); font-weight:700;">
-                        ${item.seriesWon}
-                      </td>
-                      <td style="padding:0.75rem 0.85rem; text-align:center; font-family:var(--font-mono); color:var(--accent-cyan); font-weight:700;">
-                        ${item.raceWins}
-                      </td>
-                      <td style="padding:0.75rem 0.85rem; text-align:right;">
-                        <span style="font-family:var(--font-mono); font-weight:900; font-size:1.15rem; color:#ffffff; text-shadow:0 0 10px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.6), 0 0 35px rgba(255,255,255,0.4); letter-spacing:0.5px;">
-                          ${item.totalPoints.toLocaleString()} PTS
-                        </span>
+                </thead>
+                <tbody>
+                  ${sortedStandings.length === 0 ? `
+                    <tr>
+                      <td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);">
+                        No racing teams registered.
                       </td>
                     </tr>
-                  `;
-                }).join('')}
-              </tbody>
-            </table>
+                  ` : sortedStandings.map((item, idx) => {
+                    const t = item.team;
+                    const isFirst = idx === 0 && item.totalPoints > 0;
+                    const rankColor = idx === 0 ? 'var(--accent-gold)' : (idx === 1 ? '#e0e0e0' : (idx === 2 ? '#cd7f32' : 'var(--text-muted)'));
+
+                    return `
+                      <tr style="border-bottom:1px solid rgba(255,255,255,0.04); background:${isFirst ? 'rgba(255,215,0,0.04)' : 'transparent'};">
+                        <td style="padding:0.75rem 0.85rem; font-family:var(--font-mono); font-weight:800; font-size:1.1rem; color:${rankColor};">
+                          #${idx + 1}
+                        </td>
+                        <td style="padding:0.75rem 0.85rem;">
+                          <div style="display:flex; align-items:center; gap:0.65rem;">
+                            <div style="width:28px; height:28px; border-radius:4px; border:1px solid ${t.color || '#00e5ff'}; overflow:hidden; display:flex; align-items:center; justify-content:center;">
+                              ${t.logoUrl ? `<img src="${t.logoUrl}" style="width:100%; height:100%; object-fit:cover;">` : `<span>${t.logoIcon || '🏎️'}</span>`}
+                            </div>
+                            <span style="font-weight:700; color:#fff; font-size:0.95rem;">${t.name}</span>
+                            ${isFirst ? `<span class="section-tag" style="background:rgba(255,215,0,0.15); color:var(--accent-gold); border-color:var(--border-gold); font-size:0.65rem; padding:0.1rem 0.4rem;">LEADER</span>` : ''}
+                          </div>
+                        </td>
+                        <td style="padding:0.75rem 0.85rem; text-align:center; font-family:var(--font-mono); color:var(--text-secondary);">
+                          ${item.seriesPlayed}
+                        </td>
+                        <td style="padding:0.75rem 0.85rem; text-align:center; font-family:var(--font-mono); color:var(--accent-green); font-weight:700;">
+                          ${item.seriesWon}
+                        </td>
+                        <td style="padding:0.75rem 0.85rem; text-align:center; font-family:var(--font-mono); color:var(--accent-cyan); font-weight:700;">
+                          ${item.raceWins}
+                        </td>
+                        <td style="padding:0.75rem 0.85rem; text-align:right;">
+                          <span style="font-family:var(--font-mono); font-weight:900; font-size:1.15rem; color:#ffffff; text-shadow:0 0 10px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.6), 0 0 35px rgba(255,255,255,0.4); letter-spacing:0.5px;">
+                            ${item.totalPoints.toLocaleString()} PTS
+                          </span>
+                        </td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      `;
+        `;
+      }
 
       container.innerHTML = `
         <div style="display:flex; flex-direction:column; gap:1.5rem; width:100%;">
