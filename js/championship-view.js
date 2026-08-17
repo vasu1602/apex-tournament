@@ -807,7 +807,7 @@ class ChampionshipView {
 
                     <!-- EXPANDED RACE BREAKDOWN: RACES TABS + EXACT CAPSULE RACER ROWS (CREW 1 VS CREW 2) -->
                     ${isExpanded ? `
-                      <div style="background:rgba(0,0,0,0.4); border-radius:var(--radius-md); padding:1.25rem; border:1px solid var(--border-subtle); display:flex; flex-direction:column; gap:1.25rem; animation: fadeIn 0.25s ease;">
+                      <div style="background:rgba(10,14,22,0.65); border-radius:var(--radius-md); padding:1.25rem; border:1px solid var(--border-subtle); backdrop-filter:blur(12px); display:flex; flex-direction:column; gap:1.25rem; animation: fadeIn 0.25s ease;">
                         
                         <!-- Race Selector Tabs -->
                         <div style="display:flex; align-items:center; justify-content:center; gap:0.5rem; flex-wrap:wrap; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:0.85rem;">
@@ -824,23 +824,23 @@ class ChampionshipView {
                           }).join('')}
                         </div>
 
-                        <!-- Crew 1 VS Crew 2 Header Pills (Matching User Mockup) -->
+                        <!-- Crew 1 VS Crew 2 Header Pills (Website Cyberpunk Dark Glass Theme) -->
                         <div style="display:grid; grid-template-columns: 1fr auto 1fr; align-items:center; gap:1rem;">
                           <!-- Crew 1 Header -->
-                          <div style="background:rgba(255,255,255,0.92); color:#0a0e16; border-radius:50px; padding:0.55rem 1.25rem; text-align:center; display:flex; align-items:center; justify-content:center; gap:0.5rem; box-shadow:0 3px 12px rgba(0,0,0,0.4); border:2px solid ${t1.color};">
-                            <span style="font-family:var(--font-display); font-weight:800; font-size:1.05rem; color:#0a0e16;">${t1.name}</span>
-                            <span style="font-family:var(--font-mono); font-weight:900; font-size:0.88rem; color:#0055ff;">(${raceScore1} PTS)</span>
+                          <div style="background:rgba(18,23,36,0.85); color:#fff; border-radius:50px; padding:0.6rem 1.25rem; text-align:center; display:flex; align-items:center; justify-content:center; gap:0.5rem; box-shadow:0 0 15px ${t1.color}33; border:2px solid ${t1.color}; backdrop-filter:blur(8px);">
+                            <span style="font-family:var(--font-display); font-weight:800; font-size:1.05rem; color:#fff;">${t1.name}</span>
+                            <span style="font-family:var(--font-mono); font-weight:900; font-size:0.88rem; color:${t1.color};">(${raceScore1} PTS)</span>
                           </div>
 
                           <!-- VS Pill -->
-                          <div style="font-family:var(--font-display); font-weight:900; font-size:1.1rem; color:#fff; text-shadow:0 0 10px rgba(255,255,255,0.6); padding:0 0.25rem;">
+                          <div style="font-family:var(--font-display); font-weight:900; font-size:1.1rem; color:var(--text-muted); padding:0 0.25rem;">
                             VS
                           </div>
 
                           <!-- Crew 2 Header -->
-                          <div style="background:rgba(255,255,255,0.92); color:#0a0e16; border-radius:50px; padding:0.55rem 1.25rem; text-align:center; display:flex; align-items:center; justify-content:center; gap:0.5rem; box-shadow:0 3px 12px rgba(0,0,0,0.4); border:2px solid ${t2.color};">
-                            <span style="font-family:var(--font-display); font-weight:800; font-size:1.05rem; color:#0a0e16;">${t2.name}</span>
-                            <span style="font-family:var(--font-mono); font-weight:900; font-size:0.88rem; color:#d90429;">(${raceScore2} PTS)</span>
+                          <div style="background:rgba(18,23,36,0.85); color:#fff; border-radius:50px; padding:0.6rem 1.25rem; text-align:center; display:flex; align-items:center; justify-content:center; gap:0.5rem; box-shadow:0 0 15px ${t2.color}33; border:2px solid ${t2.color}; backdrop-filter:blur(8px);">
+                            <span style="font-family:var(--font-display); font-weight:800; font-size:1.05rem; color:#fff;">${t2.name}</span>
+                            <span style="font-family:var(--font-mono); font-weight:900; font-size:0.88rem; color:${t2.color};">(${raceScore2} PTS)</span>
                           </div>
                         </div>
 
@@ -852,18 +852,19 @@ class ChampionshipView {
                             ${t1DriversSorted.map((driver) => {
                               const pos = activeRacePositions[`${t1.id}_${driver.id || driver.name}`] || '';
                               const pts = this.getPointsForPosition(pos);
+                              const rankColor = pos === '1st' ? 'var(--accent-gold)' : (pos === '2nd' || pos === '3rd' ? 'var(--accent-cyan)' : (pos === 'DNF' ? 'var(--accent-red)' : (pos ? '#ffffff' : 'var(--text-muted)')));
                               return `
-                                <div style="background:rgba(255,255,255,0.92); color:#0a0e16; border-radius:50px; padding:0.45rem 0.95rem; display:flex; align-items:center; gap:0.65rem; box-shadow:0 2px 8px rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.6);">
+                                <div style="background:rgba(18,23,36,0.75); color:#fff; border-radius:50px; padding:0.45rem 0.95rem; display:flex; align-items:center; gap:0.65rem; border:1px solid rgba(255,255,255,0.08); border-left:3px solid ${t1.color}; backdrop-filter:blur(6px);">
                                   <!-- Rank -->
-                                  <div style="font-family:var(--font-mono); font-weight:800; font-size:0.82rem; color:#444; min-width:34px; text-align:center; padding-right:0.5rem; border-right:1.5px solid #bbb;">
+                                  <div style="font-family:var(--font-mono); font-weight:800; font-size:0.82rem; color:${rankColor}; min-width:34px; text-align:center; padding-right:0.5rem; border-right:1.5px solid rgba(255,255,255,0.12);">
                                     ${pos || '—'}
                                   </div>
                                   <!-- Racer Name -->
-                                  <div style="flex:1; font-family:var(--font-display); font-weight:800; font-size:0.92rem; color:#0a0e16; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">
+                                  <div style="flex:1; font-family:var(--font-display); font-weight:700; font-size:0.92rem; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">
                                     ${driver.name}
                                   </div>
                                   <!-- Points -->
-                                  <div style="font-family:var(--font-mono); font-weight:800; font-size:0.85rem; color:${pts > 0 ? '#007a3d' : '#888'};">
+                                  <div style="font-family:var(--font-mono); font-weight:800; font-size:0.85rem; color:${pts > 0 ? 'var(--accent-gold)' : 'var(--text-muted)'}; background:rgba(0,0,0,0.35); padding:0.15rem 0.5rem; border-radius:12px; border:1px solid rgba(255,215,0,0.15);">
                                     ${pos ? (pos === 'DNF' ? 'DNF (0)' : `+${pts} PTS`) : '0 PTS'}
                                   </div>
                                 </div>
@@ -876,18 +877,19 @@ class ChampionshipView {
                             ${t2DriversSorted.map((driver) => {
                               const pos = activeRacePositions[`${t2.id}_${driver.id || driver.name}`] || '';
                               const pts = this.getPointsForPosition(pos);
+                              const rankColor = pos === '1st' ? 'var(--accent-gold)' : (pos === '2nd' || pos === '3rd' ? 'var(--accent-cyan)' : (pos === 'DNF' ? 'var(--accent-red)' : (pos ? '#ffffff' : 'var(--text-muted)')));
                               return `
-                                <div style="background:rgba(255,255,255,0.92); color:#0a0e16; border-radius:50px; padding:0.45rem 0.95rem; display:flex; align-items:center; gap:0.65rem; box-shadow:0 2px 8px rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.6);">
+                                <div style="background:rgba(18,23,36,0.75); color:#fff; border-radius:50px; padding:0.45rem 0.95rem; display:flex; align-items:center; gap:0.65rem; border:1px solid rgba(255,255,255,0.08); border-right:3px solid ${t2.color}; backdrop-filter:blur(6px);">
                                   <!-- Rank -->
-                                  <div style="font-family:var(--font-mono); font-weight:800; font-size:0.82rem; color:#444; min-width:34px; text-align:center; padding-right:0.5rem; border-right:1.5px solid #bbb;">
+                                  <div style="font-family:var(--font-mono); font-weight:800; font-size:0.82rem; color:${rankColor}; min-width:34px; text-align:center; padding-right:0.5rem; border-right:1.5px solid rgba(255,255,255,0.12);">
                                     ${pos || '—'}
                                   </div>
                                   <!-- Racer Name -->
-                                  <div style="flex:1; font-family:var(--font-display); font-weight:800; font-size:0.92rem; color:#0a0e16; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">
+                                  <div style="flex:1; font-family:var(--font-display); font-weight:700; font-size:0.92rem; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">
                                     ${driver.name}
                                   </div>
                                   <!-- Points -->
-                                  <div style="font-family:var(--font-mono); font-weight:800; font-size:0.85rem; color:${pts > 0 ? '#007a3d' : '#888'};">
+                                  <div style="font-family:var(--font-mono); font-weight:800; font-size:0.85rem; color:${pts > 0 ? 'var(--accent-gold)' : 'var(--text-muted)'}; background:rgba(0,0,0,0.35); padding:0.15rem 0.5rem; border-radius:12px; border:1px solid rgba(255,215,0,0.15);">
                                     ${pos ? (pos === 'DNF' ? 'DNF (0)' : `+${pts} PTS`) : '0 PTS'}
                                   </div>
                                 </div>
