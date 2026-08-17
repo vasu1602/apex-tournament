@@ -1,5 +1,6 @@
 import { store, POSITION_POINTS_MAP } from './state.js';
 import { soundFX } from './audio.js';
+import { DEFAULT_RACER_AVATAR, DEFAULT_TEAM_LOGO } from './presets.js';
 
 class ChampionshipView {
   constructor() {
@@ -11,11 +12,17 @@ class ChampionshipView {
     this.viewerExpandedMatches = new Set(); // Set of matchIds currently expanded
     this.viewerSelectedRaces = {}; // { [matchId]: raceIndex }
     this.tournamentSubMode = 'crew'; // 'crew' | 'solo'
+    this.soloSearchQuery = '';
   }
 
   setTournamentSubMode(mode) {
     this.tournamentSubMode = mode;
     if (window.soundFX) soundFX.play('click');
+    this.renderChampionshipView();
+  }
+
+  handleSoloSearch(query) {
+    this.soloSearchQuery = query;
     this.renderChampionshipView();
   }
 
@@ -279,6 +286,149 @@ class ChampionshipView {
       }
     }
     return result;
+  }
+
+  computeSoloDriverStandings(state) {
+    const { tournamentMatchups = [], teams = [], racers = [] } = state || {};
+    const driverStatsMap = {};
+
+    // 1. Initialize with all registered racers
+    racers.forEach(r => {
+      if (!r) return;
+      const team = teams.find(t => t.id === r.soldToTeamId || (Array.isArray(t.roster) && t.roster.some(dr => dr.id === r.id || dr.name === r.name))) || null;
+      driverStatsMap[r.id] = {
+        id: r.id,
+        name: r.name,
+        avatarUrl: r.avatarUrl || DEFAULT_RACER_AVATAR,
+        tier: r.tier || 'Tier A',
+        team: team,
+        totalPoints: 0,
+        racesPlayed: 0,
+        wins: 0,
+        podiums: 0,
+        top10: 0,
+        dnfs: 0,
+        bestFinish: '—',
+        bestFinishRank: 999
+      };
+    });
+
+    // 2. Also check all team rosters and add any placeholder or roster drivers
+    teams.forEach(t => {
+      if (Array.isArray(t.roster)) {
+        t.roster.forEach(r => {
+          if (!r) return;
+          const rId = r.id || `${t.id}_${r.name}`;
+          if (!driverStatsMap[rId]) {
+            driverStatsMap[rId] = {
+              id: rId,
+              name: r.name,
+              avatarUrl: r.avatarUrl || DEFAULT_RACER_AVATAR,
+              tier: r.tier || 'Tier A',
+              team: t,
+              totalPoints: 0,
+              racesPlayed: 0,
+              wins: 0,
+              podiums: 0,
+              top10: 0,
+              dnfs: 0,
+              bestFinish: '—',
+              bestFinishRank: 999
+            };
+          }
+        });
+      }
+    });
+
+    // 3. Scan all tournament matchups across all rounds and accumulate points
+    tournamentMatchups.forEach(m => {
+      const t1 = this.resolveTeam(m.team1, teams);
+      const t2 = this.resolveTeam(m.team2, teams);
+      const games = Array.isArray(m.games) ? m.games : [];
+
+      games.forEach(g => {
+        const positions = g.driverPositions || {};
+        Object.entries(positions).forEach(([key, pos]) => {
+          if (!pos) return;
+          const pts = this.getPointsForPosition(pos);
+          
+          let targetDriver = null;
+          if (driverStatsMap[key]) {
+            targetDriver = driverStatsMap[key];
+          } else {
+            for (const dId in driverStatsMap) {
+              const d = driverStatsMap[dId];
+              if (key === `${t1?.id}_${d.id}` || key === `${t2?.id}_${d.id}` ||
+                  key === `${t1?.id}_${d.name}` || key === `${t2?.id}_${d.name}` ||
+                  key === d.id || key === d.name) {
+                targetDriver = d;
+                break;
+              }
+            }
+          }
+
+          if (!targetDriver) {
+            let driverName = key;
+            let driverTeam = null;
+            if (key.startsWith(`${t1?.id}_`)) {
+              driverName = key.replace(`${t1.id}_`, '');
+              driverTeam = t1;
+            } else if (key.startsWith(`${t2?.id}_`)) {
+              driverName = key.replace(`${t2.id}_`, '');
+              driverTeam = t2;
+            }
+            driverStatsMap[key] = {
+              id: key,
+              name: driverName,
+              avatarUrl: DEFAULT_RACER_AVATAR,
+              tier: 'Driver',
+              team: driverTeam,
+              totalPoints: 0,
+              racesPlayed: 0,
+              wins: 0,
+              podiums: 0,
+              top10: 0,
+              dnfs: 0,
+              bestFinish: '—',
+              bestFinishRank: 999
+            };
+            targetDriver = driverStatsMap[key];
+          }
+
+          if (targetDriver) {
+            targetDriver.totalPoints += pts;
+            targetDriver.racesPlayed += 1;
+            
+            const rankNum = pos === 'DNF' ? 900 : parseInt(pos.replace(/\D/g, ''), 10);
+            if (pos === '1st' || rankNum === 1) targetDriver.wins += 1;
+            if (rankNum <= 3) targetDriver.podiums += 1;
+            if (rankNum <= 10) targetDriver.top10 += 1;
+            if (pos === 'DNF') targetDriver.dnfs += 1;
+
+            if (rankNum < targetDriver.bestFinishRank) {
+              targetDriver.bestFinishRank = rankNum;
+              targetDriver.bestFinish = pos;
+            }
+          }
+        });
+      });
+    });
+
+    // 4. Convert to array and sort automatically by Total Points descending
+    const standingsList = Object.values(driverStatsMap).sort((a, b) => {
+      if (b.totalPoints !== a.totalPoints) {
+        return b.totalPoints - a.totalPoints; // Highest points first
+      }
+      if (b.wins !== a.wins) {
+        return b.wins - a.wins; // Most 1st place wins
+      }
+      if (b.podiums !== a.podiums) {
+        return b.podiums - a.podiums; // Most podiums
+      }
+      return (a.name || '').localeCompare(b.name || '');
+    });
+
+    return standingsList;
   }
 
   getActiveMatch(allMatchups, roundId = null) {
@@ -1111,22 +1261,188 @@ class ChampionshipView {
         </div>
       `;
 
+      const allSoloStandings = this.computeSoloDriverStandings(state);
+      let filteredSoloStandings = allSoloStandings;
+      if (this.soloSearchQuery && this.soloSearchQuery.trim()) {
+        const q = this.soloSearchQuery.trim().toLowerCase();
+        filteredSoloStandings = allSoloStandings.filter(d => 
+          d.name.toLowerCase().includes(q) || 
+          (d.team && d.team.name.toLowerCase().includes(q)) || 
+          (d.tier && d.tier.toLowerCase().includes(q))
+        );
+      }
+
+      const topScorer = allSoloStandings[0] && allSoloStandings[0].totalPoints > 0 ? allSoloStandings[0] : null;
+
       const soloViewHtml = `
-        <!-- SOLO RACING MODE CONTAINER -->
-        <div class="glass-card" style="border-top:3px solid var(--accent-cyan); width:100%; padding:3.5rem 1.5rem; text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.25rem;">
-          <div style="width:72px; height:72px; border-radius:50%; background:rgba(0,242,254,0.12); border:2px solid var(--accent-cyan); display:flex; align-items:center; justify-content:center; font-size:2.3rem; box-shadow:0 0 25px rgba(0,242,254,0.35);">
-            🏎️
+        <!-- SOLO DRIVER CHAMPIONSHIP LEADERBOARD -->
+        <div class="glass-card" style="border-top:3px solid var(--accent-cyan); width:100%; padding:1.5rem; display:flex; flex-direction:column; gap:1.25rem;">
+          
+          <!-- Top Header -->
+          <div class="section-header" style="margin-bottom:0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+            <div class="section-title-wrap">
+              <span class="section-tag" style="background:rgba(0,242,254,0.15); color:var(--accent-cyan); border-color:var(--border-cyan);">
+                SOLO LEADERBOARD
+              </span>
+              <h3 class="section-title" style="font-size:1.25rem;">
+                Solo Driver Championship Standings
+              </h3>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.6rem;">
+              <span style="font-size:0.78rem; color:var(--text-muted);">
+                ${allSoloStandings.length} Drivers Ranked • Auto-Sorted by Points
+              </span>
+            </div>
           </div>
-          <div style="display:flex; flex-direction:column; gap:0.4rem;">
-            <span class="section-tag" style="color:var(--accent-cyan); align-self:center; font-size:0.75rem; letter-spacing:1px;">
-              SOLO TOURNAMENT ARENA
-            </span>
-            <h3 style="font-family:var(--font-display); font-size:1.65rem; color:#fff; text-transform:uppercase; letter-spacing:1px; margin:0.25rem 0 0;">
-              Solo Championship Racing
-            </h3>
-            <p style="color:var(--text-secondary); max-width:500px; font-size:0.9rem; margin:0.5rem auto 0; line-height:1.5;">
-              Individual driver leaderboard and solo tournament matches will appear here.
-            </p>
+
+          <!-- Highlight Stats Banner (If top driver exists) -->
+          ${topScorer ? `
+            <div style="background:linear-gradient(135deg, rgba(255,215,0,0.12) 0%, rgba(0,242,254,0.06) 100%); border:1px solid var(--border-gold); border-radius:var(--radius-md); padding:1rem 1.25rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+              <div style="display:flex; align-items:center; gap:1rem;">
+                <div style="width:48px; height:48px; border-radius:50%; border:2px solid var(--accent-gold); overflow:hidden; display:flex; align-items:center; justify-content:center; background:#000; box-shadow:0 0 15px rgba(255,215,0,0.4);">
+                  <img src="${topScorer.avatarUrl || DEFAULT_RACER_AVATAR}" style="width:100%; height:100%; object-fit:cover;">
+                </div>
+                <div>
+                  <div style="display:flex; align-items:center; gap:0.5rem;">
+                    <span class="section-tag" style="background:rgba(255,215,0,0.2); color:var(--accent-gold); border-color:var(--border-gold); font-size:0.65rem; padding:0.1rem 0.45rem;">CHAMPIONSHIP LEADER</span>
+                    ${topScorer.tier ? `<span class="badge badge-tier-${topScorer.tier.replace(/\s+/g, '').toLowerCase()}" style="font-size:0.65rem;">${topScorer.tier}</span>` : ''}
+                  </div>
+                  <div style="font-family:var(--font-display); font-size:1.2rem; font-weight:800; color:#fff; margin-top:0.15rem;">
+                    ${topScorer.name}
+                    ${topScorer.team ? `<span style="font-size:0.85rem; color:${topScorer.team.color || 'var(--text-secondary)'}; font-weight:600; margin-left:0.4rem;">(${topScorer.team.name})</span>` : ''}
+                  </div>
+                </div>
+              </div>
+
+              <div style="display:flex; align-items:center; gap:1.5rem;">
+                <div style="text-align:right;">
+                  <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Races / Wins</div>
+                  <div style="font-family:var(--font-mono); font-weight:800; font-size:1.1rem; color:#fff;">
+                    ${topScorer.racesPlayed} / <span style="color:var(--accent-gold);">${topScorer.wins} 🏆</span>
+                  </div>
+                </div>
+                <div style="text-align:right; border-left:1px solid rgba(255,255,255,0.1); padding-left:1.5rem;">
+                  <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Championship Points</div>
+                  <div style="font-family:var(--font-mono); font-weight:900; font-size:1.45rem; color:#ffffff; text-shadow:0 0 10px rgba(255,255,255,0.9), 0 0 25px rgba(255,255,255,0.6);">
+                    ${topScorer.totalPoints.toLocaleString()} PTS
+                  </div>
+                </div>
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- Search Bar & Scoring Standard -->
+          <div style="display:flex; gap:0.75rem; align-items:center; justify-content:space-between; flex-wrap:wrap;">
+            <div class="search-input-wrap" style="max-width:340px; width:100%;">
+              <span>🔍</span>
+              <input type="text" placeholder="Search driver, team or tier..." value="${this.soloSearchQuery || ''}" oninput="window.championshipView.handleSoloSearch(this.value)">
+            </div>
+            <div style="font-size:0.75rem; color:var(--text-muted); font-family:var(--font-mono);">
+              Standard: 1st (+25) • 2nd (+18) • 3rd (+15) • 4th (+12) • 5th (+10) • 6th (+8) • 7th (+6) • 8th (+4) • 9th (+2) • 10th (+1) • DNF (0)
+            </div>
+          </div>
+
+          <!-- Drivers Table -->
+          <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse; font-size:0.88rem; text-align:left;">
+              <thead>
+                <tr style="border-bottom:1px solid var(--border-subtle); color:var(--text-muted); text-transform:uppercase; font-size:0.72rem; font-family:var(--font-display);">
+                  <th style="padding:0.65rem 0.85rem; width:65px;">Rank</th>
+                  <th style="padding:0.65rem 0.85rem;">Driver Profile</th>
+                  <th style="padding:0.65rem 0.85rem;">Racing Crew</th>
+                  <th style="padding:0.65rem 0.85rem; text-align:center;">Races</th>
+                  <th style="padding:0.65rem 0.85rem; text-align:center;">Wins (1st)</th>
+                  <th style="padding:0.65rem 0.85rem; text-align:center;">Podiums</th>
+                  <th style="padding:0.65rem 0.85rem; text-align:center;">Best Finish</th>
+                  <th style="padding:0.65rem 0.85rem; text-align:right;">Individual Points</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filteredSoloStandings.length === 0 ? `
+                  <tr>
+                    <td colspan="8" style="text-align:center; padding:3rem; color:var(--text-muted);">
+                      No drivers match your search query.
+                    </td>
+                  </tr>
+                ` : filteredSoloStandings.map((driver, idx) => {
+                  const isLeader = idx === 0 && driver.totalPoints > 0 && !this.soloSearchQuery;
+                  const rankColor = idx === 0 ? 'var(--accent-gold)' : (idx === 1 ? '#e0e0e0' : (idx === 2 ? '#cd7f32' : 'var(--text-muted)'));
+                  const t = driver.team;
+
+                  return `
+                    <tr style="border-bottom:1px solid rgba(255,255,255,0.04); background:${isLeader ? 'rgba(255,215,0,0.04)' : 'transparent'}; transition:background 0.2s ease;">
+                      <!-- Rank -->
+                      <td style="padding:0.75rem 0.85rem; font-family:var(--font-mono); font-weight:800; font-size:1.15rem; color:${rankColor};">
+                        #${idx + 1}
+                      </td>
+
+                      <!-- Driver Profile -->
+                      <td style="padding:0.75rem 0.85rem;">
+                        <div style="display:flex; align-items:center; gap:0.75rem;">
+                          <div style="width:36px; height:36px; border-radius:50%; border:2px solid ${t ? (t.color || 'var(--accent-cyan)') : 'rgba(255,255,255,0.2)'}; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#000; flex-shrink:0;">
+                            <img src="${driver.avatarUrl || DEFAULT_RACER_AVATAR}" style="width:100%; height:100%; object-fit:cover;">
+                          </div>
+                          <div style="display:flex; flex-direction:column; gap:0.15rem;">
+                            <div style="display:flex; align-items:center; gap:0.45rem;">
+                              <span style="font-weight:700; color:#fff; font-size:0.95rem; font-family:var(--font-display); letter-spacing:0.5px;">
+                                ${driver.name}
+                              </span>
+                              ${isLeader ? `<span class="section-tag" style="background:rgba(255,215,0,0.15); color:var(--accent-gold); border-color:var(--border-gold); font-size:0.65rem; padding:0.05rem 0.35rem;">LEADER</span>` : ''}
+                            </div>
+                            ${driver.tier ? `
+                              <span style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; font-family:var(--font-mono);">
+                                ${driver.tier}
+                              </span>
+                            ` : ''}
+                          </div>
+                        </div>
+                      </td>
+
+                      <!-- Racing Crew / Team -->
+                      <td style="padding:0.75rem 0.85rem;">
+                        ${t ? `
+                          <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <div style="width:24px; height:24px; border-radius:4px; border:1px solid ${t.color || '#00e5ff'}; overflow:hidden; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.4);">
+                              ${t.logoUrl ? `<img src="${t.logoUrl}" style="width:100%; height:100%; object-fit:cover;">` : `<span>${t.logoIcon || '🏎️'}</span>`}
+                            </div>
+                            <span style="font-weight:600; color:#e0e0e0; font-size:0.88rem;">${t.name}</span>
+                          </div>
+                        ` : `
+                          <span style="color:var(--text-muted); font-size:0.82rem; font-style:italic;">Independent / Free Agent</span>
+                        `}
+                      </td>
+
+                      <!-- Races Entered -->
+                      <td style="padding:0.75rem 0.85rem; text-align:center; font-family:var(--font-mono); color:var(--text-secondary); font-size:0.92rem;">
+                        ${driver.racesPlayed}
+                      </td>
+
+                      <!-- 1st Place Wins -->
+                      <td style="padding:0.75rem 0.85rem; text-align:center; font-family:var(--font-mono); color:${driver.wins > 0 ? 'var(--accent-gold)' : 'var(--text-muted)'}; font-weight:700; font-size:0.95rem;">
+                        ${driver.wins > 0 ? `${driver.wins} 🏆` : '0'}
+                      </td>
+
+                      <!-- Podiums -->
+                      <td style="padding:0.75rem 0.85rem; text-align:center; font-family:var(--font-mono); color:${driver.podiums > 0 ? 'var(--accent-cyan)' : 'var(--text-muted)'}; font-weight:700; font-size:0.92rem;">
+                        ${driver.podiums}
+                      </td>
+
+                      <!-- Best Finish -->
+                      <td style="padding:0.75rem 0.85rem; text-align:center; font-family:var(--font-mono); font-weight:700; color:${driver.bestFinish === '1st' ? 'var(--accent-gold)' : (driver.bestFinish === '2nd' || driver.bestFinish === '3rd' ? 'var(--accent-green)' : 'var(--text-secondary)')}; font-size:0.9rem;">
+                        ${driver.bestFinish}
+                      </td>
+
+                      <!-- Total Individual Points (Glowing Pure White) -->
+                      <td style="padding:0.75rem 0.85rem; text-align:right;">
+                        <span style="font-family:var(--font-mono); font-weight:900; font-size:1.15rem; color:#ffffff; text-shadow:0 0 10px rgba(255,255,255,0.95), 0 0 20px rgba(255,255,255,0.65), 0 0 35px rgba(255,255,255,0.4); letter-spacing:0.5px;">
+                          ${driver.totalPoints.toLocaleString()} PTS
+                        </span>
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
           </div>
         </div>
       `;
