@@ -59,22 +59,22 @@ class AdminView {
           </button>
         </div>
 
-        <div class="admin-control-grid">
-          <!-- LEFT: Live Auctioneer Console -->
-          <div class="glass-card operator-card" style="border-top: 3px solid var(--accent-red);">
-            <div class="section-header" style="margin-bottom:0.5rem;">
+        <div style="display:flex; flex-direction:column; gap:1.5rem; width:100%;">
+          <!-- 1. FULL-WIDTH LIVE AUCTIONEER CONSOLE -->
+          <div class="glass-card operator-card" style="border-top: 3px solid var(--accent-red); width:100%;">
+            <div class="section-header" style="margin-bottom:0.75rem;">
               <div class="section-title-wrap">
-                <span class="section-tag">LIVE OP</span>
-                <h3 class="section-title" style="font-size:1.15rem;">Live Auction & Settlement Hub</h3>
+                <span class="section-tag" style="background:rgba(255,59,92,0.15); color:var(--accent-red); border-color:rgba(255,59,92,0.3);">LIVE OP</span>
+                <h3 class="section-title" style="font-size:1.2rem;">Live Auction & Settlement Hub</h3>
               </div>
               ${currentRacer ? `<span class="racer-status-badge badge-${activeAuction.status || 'upcoming'}">${activeAuction.status || 'upcoming'}</span>` : ''}
             </div>
 
             <!-- Select Racer on Block -->
-            <div class="control-field-group">
-              <label class="control-label">Racer On Auction Block</label>
-              <div style="display:flex; gap:0.5rem;">
-                <select id="admin-racer-select" class="form-select">
+            <div class="control-field-group" style="margin-bottom:0.5rem;">
+              <label class="control-label" style="font-size:0.78rem;">Racer On Auction Block</label>
+              <div style="display:flex; gap:0.5rem; width:100%;">
+                <select id="admin-racer-select" class="form-select" style="flex:1;">
                   <option value="">-- Choose a Racer to Put on Block --</option>
                   ${upcomingRacers.map((r) => `
                     <option value="${r.id}" ${currentRacer && currentRacer.id === r.id ? 'selected' : ''}>
@@ -82,100 +82,101 @@ class AdminView {
                     </option>
                   `).join('')}
                 </select>
-                <button class="btn btn-primary" onclick="window.app.handleAdminStartAuction()">
+                <button class="btn btn-primary" style="white-space:nowrap; padding:0.6rem 1.25rem;" onclick="window.app.handleAdminStartAuction()">
                   Put on Block
                 </button>
               </div>
             </div>
 
             ${currentRacer ? `
-              <div style="background:rgba(10,14,22,0.85); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border-subtle); display:flex; gap:1rem; align-items:center; margin-top:0.75rem;">
-                <img src="${currentRacer.photoUrl || currentRacer.avatar || 'assets/avatars/default.png'}" style="width:65px; height:65px; border-radius:var(--radius-md); object-fit:cover; border:2px solid var(--accent-cyan);">
-                <div style="flex:1;">
-                  <div style="font-family:var(--font-display); font-size:1.15rem; font-weight:800; color:#fff;">${currentRacer.name || 'Unnamed Racer'}</div>
-                  <div style="font-size:0.8rem; color:var(--accent-cyan); font-weight:700;">${currentRacer.tier || currentRacer.category || 'Tier S'} • Reserve: ${(Number(currentRacer.basePoints) || 0).toLocaleString()} PTS</div>
-                  <div style="font-family:var(--font-mono); font-size:1.15rem; font-weight:700; color:#fff; margin-top:0.2rem;">
-                    Current Price: <span style="color:var(--accent-gold); font-weight:900;">${activePriceNum.toLocaleString()} PTS</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Bidding & Settlement Controls -->
-              <div style="background:rgba(14,19,30,0.85); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border-cyan); display:flex; flex-direction:column; gap:0.85rem; margin-top:0.75rem;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                  <span style="font-size:0.8rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; letter-spacing:1px;">
-                    Settle Auction & Deduct Budget
-                  </span>
-                  <span style="font-size:0.75rem; color:var(--text-muted);">${teams.length} Teams Available</span>
-                </div>
-
-                <div class="control-field-group">
-                  <label class="control-label">Winning / Bidding Team</label>
-                  <select id="admin-bid-team-select" class="form-select">
-                    <option value="">-- Select Team --</option>
-                    ${teams.map((t) => {
-                      if (!t) return '';
-                      const remaining = Number(t.remainingPoints) !== undefined && !isNaN(Number(t.remainingPoints)) ? Number(t.remainingPoints) : (Number(t.startingPoints) || 10000);
-                      const rosterLen = Array.isArray(t.roster) ? t.roster.length : 0;
-                      const maxSlots = Number(t.maxRoster) || 4;
-                      return `
-                        <option value="${t.id}" ${activeAuction.leadingTeamId === t.id ? 'selected' : ''}>
-                          ${t.name || 'Team'} (Budget Left: ${remaining.toLocaleString()} PTS, Slots: ${rosterLen}/${maxSlots})
-                        </option>
-                      `;
-                    }).join('')}
-                  </select>
-                </div>
-
-                <!-- Price & Quick Increments -->
-                <div class="control-field-group">
-                  <label class="control-label">Final Sale / Bid Amount (PTS)</label>
-                  <div class="custom-bid-row">
-                    <input type="number" id="admin-custom-bid-input" class="form-input" placeholder="e.g. 2500" value="${activePriceNum}">
-                    <button class="btn btn-cyan" onclick="window.app.handleCustomBid()">Set Price</button>
+              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:1.25rem; margin-top:0.5rem;">
+                <!-- Driver Info Box -->
+                <div style="background:rgba(10,14,22,0.85); padding:1.25rem; border-radius:var(--radius-md); border:1px solid var(--border-subtle); display:flex; gap:1.25rem; align-items:center;">
+                  <img src="${currentRacer.photoUrl || currentRacer.avatar || 'assets/avatars/default.png'}" style="width:85px; height:85px; border-radius:var(--radius-md); object-fit:cover; border:2px solid var(--accent-cyan);">
+                  <div style="flex:1;">
+                    <div style="font-family:var(--font-display); font-size:1.35rem; font-weight:800; color:#fff;">${currentRacer.name || 'Unnamed Racer'}</div>
+                    <div style="font-size:0.85rem; color:var(--accent-cyan); font-weight:700; margin-top:2px;">${currentRacer.tier || currentRacer.category || 'Tier S'} • Reserve: ${(Number(currentRacer.basePoints) || 0).toLocaleString()} PTS</div>
+                    <div style="font-family:var(--font-mono); font-size:1.35rem; font-weight:800; color:#fff; margin-top:0.35rem;">
+                      Current Price: <span style="color:var(--accent-gold); font-weight:900;">${activePriceNum.toLocaleString()} PTS</span>
+                    </div>
                   </div>
                 </div>
 
-                <!-- Quick Increments -->
-                <div class="control-field-group">
-                  <label class="control-label">Quick Adjust (+ PTS)</label>
-                  <div class="increments-grid">
-                    <button class="btn-increment" onclick="window.app.handleQuickBid(100)">+100</button>
-                    <button class="btn-increment" onclick="window.app.handleQuickBid(250)">+250</button>
-                    <button class="btn-increment" onclick="window.app.handleQuickBid(500)">+500</button>
-                    <button class="btn-increment" onclick="window.app.handleQuickBid(1000)">+1000</button>
+                <!-- Settle & Controls Box -->
+                <div style="background:rgba(14,19,30,0.85); padding:1.25rem; border-radius:var(--radius-md); border:1px solid var(--border-cyan); display:flex; flex-direction:column; gap:0.85rem;">
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:0.8rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; letter-spacing:1px;">
+                      Settle Auction & Deduct Budget
+                    </span>
+                    <span style="font-size:0.75rem; color:var(--text-muted);">${teams.length} Teams Available</span>
                   </div>
-                </div>
 
-                <!-- Settlement Action Buttons -->
-                <div class="auctioneer-gavel-actions" style="margin-top:0.25rem;">
-                  <button class="btn btn-gold" style="flex:2; font-size:0.95rem; font-weight:800; padding:0.75rem;" onclick="window.app.handleSold()">
-                    Mark SOLD (Deduct Points)
-                  </button>
-                  <button class="btn btn-outline" style="flex:1;" onclick="window.app.handleUnsold()">
-                    Mark UNSOLD
-                  </button>
-                  <button class="btn btn-danger" style="flex:0.8;" onclick="window.app.handleCancelAuction()">
-                    Clear Block
-                  </button>
+                  <div class="control-field-group">
+                    <label class="control-label">Winning / Bidding Team</label>
+                    <select id="admin-bid-team-select" class="form-select">
+                      <option value="">-- Select Team --</option>
+                      ${teams.map((t) => {
+                        if (!t) return '';
+                        const remaining = Number(t.remainingPoints) !== undefined && !isNaN(Number(t.remainingPoints)) ? Number(t.remainingPoints) : (Number(t.startingPoints) || 10000);
+                        const rosterLen = Array.isArray(t.roster) ? t.roster.length : 0;
+                        const maxSlots = Number(t.maxRoster) || 4;
+                        return `
+                          <option value="${t.id}" ${activeAuction.leadingTeamId === t.id ? 'selected' : ''}>
+                            ${t.name || 'Team'} (Budget Left: ${remaining.toLocaleString()} PTS, Slots: ${rosterLen}/${maxSlots})
+                          </option>
+                        `;
+                      }).join('')}
+                    </select>
+                  </div>
+
+                  <!-- Price & Quick Increments -->
+                  <div class="control-field-group">
+                    <label class="control-label">Final Sale / Bid Amount (PTS)</label>
+                    <div class="custom-bid-row">
+                      <input type="number" id="admin-custom-bid-input" class="form-input" placeholder="e.g. 2500" value="${activePriceNum}">
+                      <button class="btn btn-cyan" onclick="window.app.handleCustomBid()">Set Price</button>
+                    </div>
+                  </div>
+
+                  <!-- Quick Increments -->
+                  <div class="control-field-group">
+                    <label class="control-label">Quick Adjust (+ PTS)</label>
+                    <div class="increments-grid">
+                      <button class="btn-increment" onclick="window.app.handleQuickBid(100)">+100</button>
+                      <button class="btn-increment" onclick="window.app.handleQuickBid(250)">+250</button>
+                      <button class="btn-increment" onclick="window.app.handleQuickBid(500)">+500</button>
+                      <button class="btn-increment" onclick="window.app.handleQuickBid(1000)">+1000</button>
+                    </div>
+                  </div>
+
+                  <!-- Settlement Action Buttons -->
+                  <div class="auctioneer-gavel-actions" style="margin-top:0.25rem;">
+                    <button class="btn btn-gold" style="flex:2; font-size:0.95rem; font-weight:800; padding:0.75rem;" onclick="window.app.handleSold()">
+                      Mark SOLD (Deduct Points)
+                    </button>
+                    <button class="btn btn-outline" style="flex:1;" onclick="window.app.handleUnsold()">
+                      Mark UNSOLD
+                    </button>
+                    <button class="btn btn-danger" style="flex:0.8;" onclick="window.app.handleCancelAuction()">
+                      Clear Block
+                    </button>
+                  </div>
                 </div>
               </div>
             ` : `
-              <div style="text-align:center; padding:2.5rem 1rem; color:var(--text-secondary); background:rgba(10,14,22,0.4); border-radius:var(--radius-md); border:1px dashed var(--border-subtle); margin-top:0.75rem;">
-                <div style="font-size:2rem; margin-bottom:0.4rem;">🏁</div>
-                <div style="font-size:0.9rem; font-weight:700; color:#fff;">No Driver on Auction Block</div>
-                <div style="font-size:0.78rem; color:var(--text-muted); margin-top:0.25rem;">Select an upcoming driver from the dropdown above and click "Put on Block".</div>
+              <div style="text-align:center; padding:3rem 1.5rem; color:var(--text-secondary); background:rgba(10,14,22,0.4); border-radius:var(--radius-md); border:1px dashed var(--border-subtle); margin-top:0.75rem;">
+                <div style="font-size:2.5rem; margin-bottom:0.5rem;">🏁</div>
+                <div style="font-size:1.1rem; font-weight:700; color:#fff;">No Driver on Auction Block</div>
+                <div style="font-size:0.85rem; color:var(--text-muted); margin-top:0.35rem;">Select an upcoming driver from the dropdown above and click "Put on Block".</div>
               </div>
             `}
           </div>
-        </div>
 
-        <!-- RIGHT: Quick Roster & Management Overview -->
-        <div style="display:flex; flex-direction:column; gap:1.25rem;">
-          <div class="glass-card" style="border-top:3px solid var(--accent-cyan);">
+          <!-- 2. FULL-WIDTH TEAM BUDGETS & SLOTS -->
+          <div class="glass-card" style="border-top:3px solid var(--accent-cyan); width:100%;">
             <div class="section-header" style="margin-bottom:0.75rem;">
               <div>
-                <h3 class="section-title" style="font-size:1.1rem;">Team Budgets & Slots</h3>
+                <h3 class="section-title" style="font-size:1.15rem;">Team Budgets & Slots</h3>
                 <span style="font-size:0.75rem; color:var(--text-muted);">${teams.length} Registered</span>
               </div>
               <button class="btn btn-cyan btn-sm" style="font-size:0.75rem; padding:0.35rem 0.75rem;" onclick="window.app.openAddTeamModal()">
@@ -218,16 +219,16 @@ class AdminView {
             </div>
           </div>
 
-            <!-- Quick Actions & Tools -->
-          <div class="glass-card">
+          <!-- 3. Auditorium & Projector Tools -->
+          <div class="glass-card" style="width:100%;">
             <h4 style="font-family:var(--font-display); font-size:0.9rem; margin-bottom:0.75rem; text-transform:uppercase; letter-spacing:1px;">
               Auditorium & Projector Tools
             </h4>
-            <div style="display:flex; gap:0.5rem; flex-direction:column;">
-              <button class="btn btn-outline" onclick="window.app.toggleFullscreen()">
+            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+              <button class="btn btn-outline" style="flex:1; min-width:200px;" onclick="window.app.toggleFullscreen()">
                 Toggle Projector Fullscreen Mode
               </button>
-              <button class="btn btn-cyan" onclick="window.app.openCreateAccessCodeModal()">
+              <button class="btn btn-cyan" style="flex:1; min-width:200px;" onclick="window.app.openCreateAccessCodeModal()">
                 Generate New Access Code
               </button>
             </div>
