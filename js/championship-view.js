@@ -274,13 +274,18 @@ class ChampionshipView {
     return result;
   }
 
-  getActiveMatch(allMatchups) {
+  getActiveMatch(allMatchups, roundId = null) {
     if (!allMatchups || allMatchups.length === 0) return null;
+    let pool = allMatchups;
+    if (roundId) {
+      const filtered = allMatchups.filter(m => (m.roundId || 'round_qualifiers') === roundId);
+      if (filtered.length > 0) pool = filtered;
+    }
     if (this.selectedMatchId) {
-      const match = allMatchups.find(m => m.id === this.selectedMatchId);
+      const match = pool.find(m => m.id === this.selectedMatchId);
       if (match) return match;
     }
-    return allMatchups[0];
+    return pool[0] || null;
   }
 
   renderChampionshipView(containerId = 'championship-container') {
@@ -291,6 +296,7 @@ class ChampionshipView {
       const state = store.getState() || {};
       const {
         tournamentRounds = [{ id: 'round_qualifiers', name: 'Qualifiers', isLocked: false }],
+        activeTournamentRoundId = 'round_qualifiers',
         tournamentMatchups = [],
         teams = [],
         racers = [],
@@ -299,7 +305,13 @@ class ChampionshipView {
       } = state;
 
       const isAdmin = Boolean(currentUser.isAuthenticated);
-      const activeMatch = this.getActiveMatch(tournamentMatchups);
+      
+      const activeRoundId = this.selectedRoundId || activeTournamentRoundId || (tournamentRounds[0] && tournamentRounds[0].id) || 'round_qualifiers';
+      const activeRound = tournamentRounds.find(r => r.id === activeRoundId) || tournamentRounds[0] || { id: 'round_qualifiers', name: 'Qualifiers' };
+      const activeRoundName = activeRound ? activeRound.name : 'Qualifiers';
+
+      const roundMatchups = tournamentMatchups.filter(m => (m.roundId || (tournamentRounds[0] && tournamentRounds[0].id) || 'round_qualifiers') === activeRound.id);
+      const activeMatch = this.getActiveMatch(tournamentMatchups, activeRound.id);
 
       let team1 = null;
       let team2 = null;
@@ -448,11 +460,22 @@ class ChampionshipView {
 
               <!-- Match Selector & Lock Button -->
               <div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
-                ${tournamentMatchups.length > 0 ? `
+                ${tournamentRounds.length > 1 ? `
+                  <div style="display:flex; align-items:center; gap:0.4rem;">
+                    <label style="font-size:0.75rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">ROUND:</label>
+                    <select class="form-select" style="font-size:0.85rem; padding:0.4rem 0.65rem;" onchange="window.championshipView.selectRound(this.value)">
+                      ${tournamentRounds.map(r => `
+                        <option value="${r.id}" ${activeRound.id === r.id ? 'selected' : ''}>${r.name}</option>
+                      `).join('')}
+                    </select>
+                  </div>
+                ` : ''}
+
+                ${roundMatchups.length > 0 ? `
                   <div style="display:flex; align-items:center; gap:0.4rem;">
                     <label style="font-size:0.75rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">ACTIVE MATCH:</label>
                     <select class="form-select" style="min-width:240px; font-size:0.85rem; padding:0.4rem 0.75rem;" onchange="window.championshipView.selectMatch(this.value)">
-                      ${tournamentMatchups.map((m, idx) => {
+                      ${roundMatchups.map((m, idx) => {
                         const t1 = this.resolveTeam(m.team1, teams);
                         const t2 = this.resolveTeam(m.team2, teams);
                         const sFmt = (m.seriesFormat || 'bo3').toUpperCase();
@@ -465,7 +488,7 @@ class ChampionshipView {
                     </select>
                   </div>
                 ` : `
-                  <span style="font-size:0.8rem; color:var(--text-muted);">No matchups drawn yet.</span>
+                  <span style="font-size:0.8rem; color:var(--text-muted);">No matchups drawn for ${activeRoundName}.</span>
                 `}
 
                 ${activeMatch ? `
@@ -668,15 +691,15 @@ class ChampionshipView {
         `;
       }
 
-      // 2. VIEWER MATCH-UPS & SERIES CARDS WITH TAP-TO-INSPECT RACES AND CAPSULE RACER POINTS
+      // 2. VIEWER MATCH-UPS & SERIES CARDS ACCORDING TO ROUNDS
       let viewerMatchCardsHtml = '';
-      if (tournamentMatchups.length > 0) {
-        // Filter: Viewers only see finalized (locked) matchups + only the single NEXT active matchup
-        let visibleViewerMatches = tournamentMatchups;
+      if (tournamentMatchups.length > 0 || tournamentRounds.length > 0) {
+        // Filter: Viewers only see finalized (locked) matchups + only the single NEXT active matchup in the active round
+        let visibleViewerMatches = roundMatchups;
         if (!isAdmin) {
           visibleViewerMatches = [];
           let foundNextUnlocked = false;
-          for (const m of tournamentMatchups) {
+          for (const m of roundMatchups) {
             if (m.isLocked) {
               visibleViewerMatches.push(m);
             } else if (!foundNextUnlocked) {
@@ -686,27 +709,54 @@ class ChampionshipView {
           }
         }
 
-        const hiddenMatchesCount = tournamentMatchups.length - visibleViewerMatches.length;
+        const hiddenMatchesCount = roundMatchups.length - visibleViewerMatches.length;
 
         viewerMatchCardsHtml = `
-          <!-- TOURNAMENT MATCHES (TAP TO INSPECT RACES & RACER POINTS) -->
+          <!-- TOURNAMENT MATCHES ACCORDING TO ROUNDS -->
           <div class="glass-card" style="border-top: 3px solid var(--accent-cyan); width: 100%; padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem;">
-            <div class="section-header" style="margin-bottom:0.25rem;">
+            
+            <!-- Section Header (Dynamic Round Name) -->
+            <div class="section-header" style="margin-bottom:0.25rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
               <div class="section-title-wrap">
-                <span class="section-tag" style="color:var(--accent-cyan);">MATCH-UPS ARENA</span>
+                <span class="section-tag" style="color:var(--accent-cyan); font-weight:800; letter-spacing:1px;">
+                  ROUND: ${activeRoundName.toUpperCase()}
+                </span>
                 <h3 class="section-title" style="font-size:1.25rem;">
-                  Championship Tournament Matches
+                  ${activeRoundName} — Championship Matches
                 </h3>
               </div>
-              <span style="font-size:0.78rem; color:var(--text-muted);">${visibleViewerMatches.length} of ${tournamentMatchups.length} Match-ups Live</span>
+              <span style="font-size:0.78rem; color:var(--text-muted);">${visibleViewerMatches.length} of ${roundMatchups.length} Match-ups Live</span>
             </div>
+
+            <!-- Round Switcher Tabs (For Viewers & Admins) -->
+            ${tournamentRounds.length > 1 ? `
+              <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; padding-bottom:0.5rem; border-bottom:1px solid rgba(255,255,255,0.06);">
+                <span style="font-size:0.75rem; color:var(--text-muted); font-weight:800; text-transform:uppercase; letter-spacing:1px; margin-right:0.25rem;">ROUNDS:</span>
+                ${tournamentRounds.map(r => {
+                  const isSel = (r.id === activeRound.id);
+                  const rCount = tournamentMatchups.filter(m => (m.roundId || tournamentRounds[0]?.id) === r.id).length;
+                  return `
+                    <button class="filter-pill-btn ${isSel ? 'active' : ''}" style="font-size:0.8rem; padding:0.35rem 0.95rem; border-radius:50px; font-weight:800;" onclick="window.championshipView.selectRound('${r.id}')">
+                      ${r.name} ${rCount > 0 ? `(${rCount})` : ''}
+                    </button>
+                  `;
+                }).join('')}
+              </div>
+            ` : ''}
 
             <p style="font-size:0.82rem; color:var(--text-secondary); margin:0 0 0.5rem;">
               💡 <strong>Tip:</strong> Tap on any match-up card or team name to view the races and inspect individual racer finishing points.
             </p>
 
-            <div style="display:flex; flex-direction:column; gap:1.25rem;">
-              ${visibleViewerMatches.map((match, mIdx) => {
+            ${roundMatchups.length === 0 ? `
+              <div style="text-align:center; padding:3rem 1.5rem; color:var(--text-muted); font-size:0.9rem; border:1px dashed var(--border-subtle); border-radius:var(--radius-md); background:rgba(7, 10, 16, 0.4);">
+                <div style="font-size:2.2rem; margin-bottom:0.5rem;">🏁</div>
+                No match-ups created yet for <strong>${activeRoundName}</strong>.<br>
+                <span style="font-size:0.82rem; color:var(--text-muted); margin-top:0.35rem; display:inline-block;">Waiting for Race Control to draw face-offs for this round.</span>
+              </div>
+            ` : `
+              <div style="display:flex; flex-direction:column; gap:1.25rem;">
+                ${visibleViewerMatches.map((match, mIdx) => {
                 const t1 = this.resolveTeam(match.team1, teams);
                 const t2 = this.resolveTeam(match.team2, teams);
                 const matchFmt = (match.seriesFormat || 'bo3').toUpperCase();
@@ -938,6 +988,7 @@ class ChampionshipView {
                 </div>
               ` : ''}
             </div>
+            `}
           </div>
         `;
       }
