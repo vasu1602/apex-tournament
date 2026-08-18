@@ -189,19 +189,27 @@ class AdminView {
                 <div style="text-align:center; padding:1.5rem; color:var(--text-muted); font-size:0.85rem;">
                   No teams registered. Click <strong>+ Add Team</strong> to add one.
                 </div>
-              ` : teams.map((t) => `
-                <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(10,14,22,0.6); padding:0.65rem 0.85rem; border-radius:var(--radius-md); border-left:3px solid ${t.color}; gap:0.5rem;">
+              ` : teams.map((t) => {
+                if (!t) return '';
+                const rosterCount = Array.isArray(t.roster) ? t.roster.length : (racers.filter(r => r && r.soldToTeamId === t.id).length);
+                const maxSlots = Number(t.maxRoster) || 4;
+                const remainingPts = (typeof t.remainingPoints === 'number' && !isNaN(t.remainingPoints)) ? t.remainingPoints : (Number(t.startingPoints) || 10000);
+                const teamColor = t.color || '#00e5ff';
+                const teamName = t.name || 'Unnamed Team';
+
+                return `
+                <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(10,14,22,0.6); padding:0.65rem 0.85rem; border-radius:var(--radius-md); border-left:3px solid ${teamColor}; gap:0.5rem;">
                   <div style="display:flex; align-items:center; gap:0.6rem; flex:1; min-width:0;">
-                    ${t.logoUrl ? `<img src="${t.logoUrl}" style="width:28px; height:28px; border-radius:4px; object-fit:cover;">` : `<span style="font-size:1.2rem;">${t.logoIcon || ''}</span>`}
+                    ${t.logoUrl ? `<img src="${t.logoUrl}" style="width:28px; height:28px; border-radius:4px; object-fit:cover;">` : `<span style="font-size:1.2rem;">${t.logoIcon || '🏎️'}</span>`}
                     <div style="overflow:hidden;">
-                      <div style="font-weight:700; font-size:0.88rem; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">${t.name}</div>
-                      <div style="font-size:0.72rem; color:var(--text-muted);">Roster: ${t.roster.length}/${t.maxRoster} Signed</div>
+                      <div style="font-weight:700; font-size:0.88rem; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">${teamName}</div>
+                      <div style="font-size:0.72rem; color:var(--text-muted);">Roster: ${rosterCount}/${maxSlots} Signed</div>
                     </div>
                   </div>
                   <div style="display:flex; align-items:center; gap:0.75rem;">
                     <div style="text-align:right;">
                       <div style="font-family:var(--font-mono); font-weight:700; color:var(--accent-green); font-size:0.92rem;">
-                        ${t.remainingPoints.toLocaleString()} PTS
+                        ${remainingPts.toLocaleString()} PTS
                       </div>
                       <div style="font-size:0.68rem; color:var(--text-muted);">Remaining</div>
                     </div>
@@ -215,7 +223,8 @@ class AdminView {
                     </div>
                   </div>
                 </div>
-              `).join('')}
+              `;
+              }).join('')}
             </div>
           </div>
 
@@ -234,7 +243,6 @@ class AdminView {
             </div>
           </div>
         </div>
-      </div>
 
       <!-- BOTTOM: Access Codes & Permission Delegation -->
       <div class="glass-card" style="margin-top:1.5rem; border-top:3px solid var(--accent-gold);">
