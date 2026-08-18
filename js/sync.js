@@ -272,8 +272,16 @@ class SyncBridge {
     } catch (e) {}
   }
 
-  // --- SERVER & CLOUD API SYNC (Works on Vercel + Local Wi-Fi) ---
+  // --- SERVER & CLOUD API SYNC (Local development & LAN Wi-Fi only) ---
   initLocalServerSync() {
+    const isLocalHost = typeof window !== 'undefined' && (
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname.startsWith('192.168.') ||
+      window.location.hostname.startsWith('10.')
+    );
+    if (!isLocalHost) return; // On Vercel / Cloud, Firebase + MQTT handle sync directly with 0 Vercel Origin costs
+
     // Initial fetch on load
     this.pollLocalState();
 
@@ -305,6 +313,14 @@ class SyncBridge {
   }
 
   pollLocalState() {
+    const isLocalHost = typeof window !== 'undefined' && (
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname.startsWith('192.168.') ||
+      window.location.hostname.startsWith('10.')
+    );
+    if (!isLocalHost) return;
+
     fetch('/api/state')
       .then(res => res.json())
       .then(data => {
@@ -465,14 +481,20 @@ class SyncBridge {
       });
     }
 
-    // 2. Post to Local Server API (for Wi-Fi & LAN phones)
-    fetch('/api/state', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payloadToSync)
-    }).catch(() => {
-      // Ignored if purely static host
-    });
+    // 2. Post to Local Server API (Only when running local server on LAN/localhost)
+    const isLocalHost = typeof window !== 'undefined' && (
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname.startsWith('192.168.') ||
+      window.location.hostname.startsWith('10.')
+    );
+    if (isLocalHost) {
+      fetch('/api/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payloadToSync)
+      }).catch(() => {});
+    }
 
     // 3. Publish to Global Cloud MQTT WebSockets (for Vercel & Internet Viewers)
     if (this.mqttClient && this.mqttClient.connected && !this.isApplyingRemoteState) {
@@ -525,12 +547,20 @@ class SyncBridge {
       this.channel.postMessage(eventData);
     }
 
-    // 2. Local Server SSE/REST (Wi-Fi and mobile phones)
-    fetch('/api/box-event', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    }).catch(() => {});
+    // 2. Local Server SSE/REST (Local LAN only)
+    const isLocalHost = typeof window !== 'undefined' && (
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname.startsWith('192.168.') ||
+      window.location.hostname.startsWith('10.')
+    );
+    if (isLocalHost) {
+      fetch('/api/box-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).catch(() => {});
+    }
 
     // 3. Global Cloud MQTT (Vercel internet viewers)
     if (this.mqttClient && this.mqttClient.connected) {
