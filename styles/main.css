@@ -517,20 +517,25 @@ html, body {
 
 /* Footer */
 .app-footer {
-  border-top: 1px solid var(--border-subtle);
-  background: rgba(6, 8, 12, 0.9);
-  padding: 1.25rem 1.5rem;
+  border-top: none;
+  background: transparent;
+  padding: 1.5rem 2rem 2rem;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  font-size: 0.8rem;
+  justify-content: flex-end;
+  font-size: 0.78rem;
   color: var(--text-muted);
-  flex-wrap: wrap;
-  gap: 1rem;
+  opacity: 0.4;
+  font-family: var(--font-display);
+  letter-spacing: 0.8px;
 }
 
-.footer-credits strong {
-  color: var(--text-secondary);
+.footer-credits {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  letter-spacing: 1px;
+  font-weight: 600;
+  color: var(--text-muted);
 }
 
 .footer-sync-status {
