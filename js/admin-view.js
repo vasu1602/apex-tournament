@@ -75,12 +75,15 @@ class AdminView {
               <label class="control-label" style="font-size:0.78rem;">Racer On Auction Block</label>
               <div style="display:flex; gap:0.5rem; width:100%;">
                 <select id="admin-racer-select" class="form-select" style="flex:1;">
-                  <option value="">-- Choose a Racer to Put on Block --</option>
-                  ${upcomingRacers.map((r) => `
+                  <option value="">🏎️ -- Select a Driver for Auction --</option>
+                  ${upcomingRacers.map((r) => {
+                    if (!r) return '';
+                    return `
                     <option value="${r.id}" ${currentRacer && currentRacer.id === r.id ? 'selected' : ''}>
-                      ${r.name || 'Racer'} (${r.tier || r.category || 'Tier S'}) - Starting: ${(Number(r.basePoints) || 0).toLocaleString()} PTS
+                      ${r.name || 'Racer'} [${r.tier || r.category || 'Tier S'}] • Starting: ${(Number(r.basePoints) || 0).toLocaleString()} PTS
                     </option>
-                  `).join('')}
+                  `;
+                  }).join('')}
                 </select>
                 <button class="btn btn-primary" style="white-space:nowrap; padding:0.6rem 1.25rem;" onclick="window.app.handleAdminStartAuction()">
                   Put on Block
@@ -114,15 +117,15 @@ class AdminView {
                   <div class="control-field-group">
                     <label class="control-label">Winning / Bidding Team</label>
                     <select id="admin-bid-team-select" class="form-select">
-                      <option value="">-- Select Team --</option>
+                      <option value="">🛡️ -- Choose Winning Team --</option>
                       ${teams.map((t) => {
                         if (!t) return '';
                         const remaining = Number(t.remainingPoints) !== undefined && !isNaN(Number(t.remainingPoints)) ? Number(t.remainingPoints) : (Number(t.startingPoints) || 10000);
-                        const rosterLen = Array.isArray(t.roster) ? t.roster.length : 0;
+                        const rosterLen = Array.isArray(t.roster) ? t.roster.length : (racers.filter(r => r && r.soldToTeamId === t.id).length);
                         const maxSlots = Number(t.maxRoster) || 4;
                         return `
                           <option value="${t.id}" ${activeAuction.leadingTeamId === t.id ? 'selected' : ''}>
-                            ${t.name || 'Team'} (Budget Left: ${remaining.toLocaleString()} PTS, Slots: ${rosterLen}/${maxSlots})
+                            ${t.name || 'Team'} • ${remaining.toLocaleString()} PTS Left (${rosterLen}/${maxSlots} Slots)
                           </option>
                         `;
                       }).join('')}
