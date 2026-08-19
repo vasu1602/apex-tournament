@@ -688,11 +688,12 @@ class AppController {
   // --- AUCTIONEER ACTIONS ---
   handleAdminStartAuction() {
     const selectEl = document.getElementById('admin-racer-select');
-    if (!selectEl || !selectEl.value) {
+    const racerId = (window.adminView && window.adminView.selectedRacerOnBlockId) || (selectEl ? selectEl.value : null);
+    if (!racerId) {
       this.showToast('Please select a racer to put on block', 'error');
       return;
     }
-    this.startAuctionForRacer(selectEl.value);
+    this.startAuctionForRacer(racerId);
   }
 
   startAuctionForRacer(racerId) {
@@ -709,6 +710,7 @@ class AppController {
     const state = store.getState();
     const selectTeam = document.getElementById('admin-bid-team-select');
     const customInput = document.getElementById('admin-custom-bid-input');
+    const teamId = (window.adminView && window.adminView.selectedWinningTeamId) || (selectTeam ? selectTeam.value : null);
     
     let currentAmount = customInput ? Number(customInput.value) : state.activeAuction.currentBid;
     if (!currentAmount || isNaN(currentAmount)) currentAmount = state.activeAuction.currentBid || 1000;
@@ -716,8 +718,8 @@ class AppController {
     const nextAmount = currentAmount + increment;
     if (customInput) customInput.value = nextAmount;
 
-    if (selectTeam && selectTeam.value) {
-      this.placeBidForTeam(selectTeam.value, nextAmount);
+    if (teamId) {
+      this.placeBidForTeam(teamId, nextAmount);
     } else {
       state.activeAuction.currentBid = nextAmount;
       store.saveState();
@@ -728,6 +730,7 @@ class AppController {
   handleCustomBid() {
     const selectTeam = document.getElementById('admin-bid-team-select');
     const inputAmount = document.getElementById('admin-custom-bid-input');
+    const teamId = (window.adminView && window.adminView.selectedWinningTeamId) || (selectTeam ? selectTeam.value : null);
     if (!inputAmount) return;
 
     const amount = Number(inputAmount.value);
@@ -736,8 +739,8 @@ class AppController {
       return;
     }
 
-    if (selectTeam && selectTeam.value) {
-      this.placeBidForTeam(selectTeam.value, amount);
+    if (teamId) {
+      this.placeBidForTeam(teamId, amount);
     } else {
       const state = store.getState();
       state.activeAuction.currentBid = amount;
@@ -761,7 +764,7 @@ class AppController {
     const selectTeam = document.getElementById('admin-bid-team-select');
     const inputAmount = document.getElementById('admin-custom-bid-input');
     
-    const teamId = selectTeam ? selectTeam.value : null;
+    const teamId = (window.adminView && window.adminView.selectedWinningTeamId) || (selectTeam ? selectTeam.value : null);
     const price = inputAmount ? Number(inputAmount.value) : null;
 
     if (!teamId) {

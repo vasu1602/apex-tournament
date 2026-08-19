@@ -12,10 +12,92 @@ class AdminView {
     this.uploadedTeamLogoBase64 = null;
     this.editingRacerId = null;
     this.editingTeamId = null;
+    this.selectedRacerOnBlockId = null;
+    this.selectedWinningTeamId = null;
+    this.isRacerDropdownOpen = false;
+    this.isTeamDropdownOpen = false;
+    if (typeof window !== 'undefined') {
+      window.adminView = this;
+    }
   }
 
   init() {
+    if (typeof window !== 'undefined') {
+      window.adminView = this;
+    }
     this.startGlobalTimerLoop();
+
+    // Close dropdowns on outside click
+    if (typeof document !== 'undefined') {
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('#admin-racer-dropdown-container') && this.isRacerDropdownOpen) {
+          this.isRacerDropdownOpen = false;
+          const menu = document.getElementById('admin-racer-dropdown-menu');
+          const trigger = document.getElementById('admin-racer-dropdown-trigger');
+          if (menu) menu.classList.remove('open');
+          if (trigger) trigger.classList.remove('open');
+        }
+        if (!e.target.closest('#admin-team-dropdown-container') && this.isTeamDropdownOpen) {
+          this.isTeamDropdownOpen = false;
+          const menu = document.getElementById('admin-team-dropdown-menu');
+          const trigger = document.getElementById('admin-team-dropdown-trigger');
+          if (menu) menu.classList.remove('open');
+          if (trigger) trigger.classList.remove('open');
+        }
+      });
+    }
+  }
+
+  toggleRacerDropdown(e) {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    this.isRacerDropdownOpen = !this.isRacerDropdownOpen;
+    this.isTeamDropdownOpen = false;
+    const menu = document.getElementById('admin-racer-dropdown-menu');
+    const trigger = document.getElementById('admin-racer-dropdown-trigger');
+    if (menu) menu.classList.toggle('open', this.isRacerDropdownOpen);
+    if (trigger) trigger.classList.toggle('open', this.isRacerDropdownOpen);
+
+    const teamMenu = document.getElementById('admin-team-dropdown-menu');
+    const teamTrigger = document.getElementById('admin-team-dropdown-trigger');
+    if (teamMenu) teamMenu.classList.remove('open');
+    if (teamTrigger) teamTrigger.classList.remove('open');
+  }
+
+  selectRacerOnBlock(racerId) {
+    this.selectedRacerOnBlockId = racerId;
+    this.isRacerDropdownOpen = false;
+    const hiddenInput = document.getElementById('admin-racer-select');
+    if (hiddenInput) hiddenInput.value = racerId;
+    this.renderAdminDesk();
+  }
+
+  toggleTeamDropdown(e) {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    this.isTeamDropdownOpen = !this.isTeamDropdownOpen;
+    this.isRacerDropdownOpen = false;
+    const menu = document.getElementById('admin-team-dropdown-menu');
+    const trigger = document.getElementById('admin-team-dropdown-trigger');
+    if (menu) menu.classList.toggle('open', this.isTeamDropdownOpen);
+    if (trigger) trigger.classList.toggle('open', this.isTeamDropdownOpen);
+
+    const racerMenu = document.getElementById('admin-racer-dropdown-menu');
+    const racerTrigger = document.getElementById('admin-racer-dropdown-trigger');
+    if (racerMenu) racerMenu.classList.remove('open');
+    if (racerTrigger) racerTrigger.classList.remove('open');
+  }
+
+  selectWinningTeam(teamId) {
+    this.selectedWinningTeamId = teamId;
+    this.isTeamDropdownOpen = false;
+    const hiddenInput = document.getElementById('admin-bid-team-select');
+    if (hiddenInput) hiddenInput.value = teamId;
+    this.renderAdminDesk();
   }
 
   // Auction timer removed per user preference
@@ -45,6 +127,12 @@ class AdminView {
       const upcomingRacers = racers.filter((r) => r && (r.status === 'upcoming' || r.status === 'unsold'));
       const activePriceNum = Number(activeAuction.currentBid) || (currentRacer ? Number(currentRacer.basePoints) : 0);
 
+      const selectedRacerId = this.selectedRacerOnBlockId || (currentRacer ? currentRacer.id : '');
+      const selectedRacerObj = upcomingRacers.find(r => r && r.id === selectedRacerId);
+
+      const selectedTeamId = this.selectedWinningTeamId || activeAuction.leadingTeamId || '';
+      const selectedTeamObj = teams.find(t => t && t.id === selectedTeamId);
+
       container.innerHTML = `
         <!-- Admin Action Bar -->
         <div class="admin-actions-toolbar">
@@ -70,22 +158,72 @@ class AdminView {
               ${currentRacer ? `<span class="racer-status-badge badge-${activeAuction.status || 'upcoming'}">${activeAuction.status || 'upcoming'}</span>` : ''}
             </div>
 
-            <!-- Select Racer on Block -->
+            <!-- Custom Cyberpunk Select Racer on Block -->
             <div class="control-field-group" style="margin-bottom:0.5rem;">
               <label class="control-label" style="font-size:0.78rem;">Racer On Auction Block</label>
-              <div style="display:flex; gap:0.5rem; width:100%;">
-                <select id="admin-racer-select" class="form-select" style="flex:1;">
-                  <option value="">🏎️ -- Select a Driver for Auction --</option>
-                  ${upcomingRacers.map((r) => {
-                    if (!r) return '';
-                    return `
-                    <option value="${r.id}" ${currentRacer && currentRacer.id === r.id ? 'selected' : ''}>
-                      ${r.name || 'Racer'} [${r.tier || r.category || 'Tier S'}] • Starting: ${(Number(r.basePoints) || 0).toLocaleString()} PTS
-                    </option>
-                  `;
-                  }).join('')}
-                </select>
-                <button class="btn btn-primary" style="white-space:nowrap; padding:0.6rem 1.25rem;" onclick="window.app.handleAdminStartAuction()">
+              <div style="display:flex; gap:0.6rem; width:100%; align-items:stretch;">
+                
+                <!-- Hidden input for backwards-compatibility -->
+                <input type="hidden" id="admin-racer-select" value="${selectedRacerId}">
+
+                <!-- Cyberpunk Custom Dropdown Container -->
+                <div class="custom-dropdown-container" id="admin-racer-dropdown-container">
+                  <button type="button" class="custom-dropdown-trigger ${this.isRacerDropdownOpen ? 'open' : ''}" id="admin-racer-dropdown-trigger" onclick="window.adminView.toggleRacerDropdown(event)">
+                    ${selectedRacerObj ? `
+                      <div style="display:flex; align-items:center; gap:0.75rem; min-width:0;">
+                        <img src="${selectedRacerObj.photoUrl || selectedRacerObj.avatar || 'assets/avatars/default.png'}" class="dropdown-racer-thumb">
+                        <div style="display:flex; flex-direction:column; text-align:left; min-width:0;">
+                          <span style="font-family:var(--font-display); font-weight:800; font-size:0.95rem; color:#ffffff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">
+                            ${selectedRacerObj.name || 'Unnamed Racer'}
+                          </span>
+                          <span style="font-size:0.72rem; color:var(--accent-cyan); font-weight:700;">
+                            ${selectedRacerObj.tier || selectedRacerObj.category || 'Tier S'} • Starting: ${(Number(selectedRacerObj.basePoints) || 0).toLocaleString()} PTS
+                          </span>
+                        </div>
+                      </div>
+                    ` : `
+                      <div style="display:flex; align-items:center; gap:0.6rem; color:var(--text-secondary);">
+                        <span style="font-size:1.1rem;">🏎️</span>
+                        <span style="font-size:0.9rem; font-weight:600;">Choose a Racer to Put on Block...</span>
+                      </div>
+                    `}
+                    <div class="custom-dropdown-chevron">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                  </button>
+
+                  <div class="custom-dropdown-menu ${this.isRacerDropdownOpen ? 'open' : ''}" id="admin-racer-dropdown-menu">
+                    ${upcomingRacers.length === 0 ? `
+                      <div style="padding:1.25rem; text-align:center; color:var(--text-muted); font-size:0.85rem;">
+                        No upcoming racers available in the pool.
+                      </div>
+                    ` : upcomingRacers.map(r => {
+                      const isSel = (selectedRacerId === r.id);
+                      const rPts = Number(r.basePoints) || 0;
+                      const rTier = r.tier || r.category || 'Tier S';
+                      const tierColor = (rTier === 'Tier S' || rTier === 'S') ? 'var(--accent-gold)' : ((rTier === 'Tier A' || rTier === 'A') ? 'var(--accent-cyan)' : '#cbd5e1');
+
+                      return `
+                        <div class="custom-dropdown-item ${isSel ? 'selected' : ''}" onclick="window.adminView.selectRacerOnBlock('${r.id}')">
+                          <div style="display:flex; align-items:center; gap:0.75rem; min-width:0;">
+                            <img src="${r.photoUrl || r.avatar || 'assets/avatars/default.png'}" class="dropdown-racer-thumb">
+                            <div style="display:flex; flex-direction:column; min-width:0;">
+                              <span class="dropdown-item-name">${r.name || 'Racer'}</span>
+                              <span class="dropdown-item-tier" style="color:${tierColor};">
+                                ${rTier}
+                              </span>
+                            </div>
+                          </div>
+                          <div style="font-family:var(--font-mono); font-weight:800; font-size:0.9rem; color:#ffffff; text-shadow:0 0 10px rgba(255,255,255,0.7); flex-shrink:0; text-align:right;">
+                            ${rPts.toLocaleString()} PTS
+                          </div>
+                        </div>
+                      `;
+                    }).join('')}
+                  </div>
+                </div>
+
+                <button class="btn btn-primary" style="white-space:nowrap; padding:0.6rem 1.35rem; min-height:52px; font-weight:800;" onclick="window.app.handleAdminStartAuction()">
                   Put on Block
                 </button>
               </div>
@@ -114,22 +252,71 @@ class AdminView {
                     <span style="font-size:0.75rem; color:var(--text-muted);">${teams.length} Teams Available</span>
                   </div>
 
+                  <!-- Custom Cyberpunk Winning / Bidding Team Selector -->
                   <div class="control-field-group">
                     <label class="control-label">Winning / Bidding Team</label>
-                    <select id="admin-bid-team-select" class="form-select">
-                      <option value="">🛡️ -- Choose Winning Team --</option>
-                      ${teams.map((t) => {
-                        if (!t) return '';
-                        const remaining = Number(t.remainingPoints) !== undefined && !isNaN(Number(t.remainingPoints)) ? Number(t.remainingPoints) : (Number(t.startingPoints) || 10000);
-                        const rosterLen = Array.isArray(t.roster) ? t.roster.length : (racers.filter(r => r && r.soldToTeamId === t.id).length);
-                        const maxSlots = Number(t.maxRoster) || 4;
-                        return `
-                          <option value="${t.id}" ${activeAuction.leadingTeamId === t.id ? 'selected' : ''}>
-                            ${t.name || 'Team'} • ${remaining.toLocaleString()} PTS Left (${rosterLen}/${maxSlots} Slots)
-                          </option>
-                        `;
-                      }).join('')}
-                    </select>
+                    <input type="hidden" id="admin-bid-team-select" value="${selectedTeamId}">
+
+                    <div class="custom-dropdown-container" id="admin-team-dropdown-container">
+                      <button type="button" class="custom-dropdown-trigger ${this.isTeamDropdownOpen ? 'open' : ''}" id="admin-team-dropdown-trigger" onclick="window.adminView.toggleTeamDropdown(event)">
+                        ${selectedTeamObj ? `
+                          <div style="display:flex; align-items:center; gap:0.75rem; min-width:0;">
+                            <div class="dropdown-team-thumb" style="border:1.5px solid ${selectedTeamObj.color || '#00f2fe'};">
+                              ${selectedTeamObj.logoUrl ? `<img src="${selectedTeamObj.logoUrl}" style="width:100%; height:100%; object-fit:cover;">` : `<span>${selectedTeamObj.logoIcon || '🏎️'}</span>`}
+                            </div>
+                            <div style="display:flex; flex-direction:column; text-align:left; min-width:0;">
+                              <span style="font-family:var(--font-display); font-weight:800; font-size:0.95rem; color:#ffffff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">
+                                ${selectedTeamObj.name || 'Unnamed Team'}
+                              </span>
+                              <span style="font-size:0.72rem; color:var(--accent-green); font-weight:700;">
+                                ${((typeof selectedTeamObj.remainingPoints === 'number' && !isNaN(selectedTeamObj.remainingPoints)) ? selectedTeamObj.remainingPoints : (Number(selectedTeamObj.startingPoints) || 10000)).toLocaleString()} PTS Left (${Array.isArray(selectedTeamObj.roster) ? selectedTeamObj.roster.length : 0}/${Number(selectedTeamObj.maxRoster) || 4} Slots)
+                              </span>
+                            </div>
+                          </div>
+                        ` : `
+                          <div style="display:flex; align-items:center; gap:0.6rem; color:var(--text-secondary);">
+                            <span style="font-size:1.1rem;">🛡️</span>
+                            <span style="font-size:0.9rem; font-weight:600;">Choose Winning Team...</span>
+                          </div>
+                        `}
+                        <div class="custom-dropdown-chevron">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </div>
+                      </button>
+
+                      <div class="custom-dropdown-menu ${this.isTeamDropdownOpen ? 'open' : ''}" id="admin-team-dropdown-menu">
+                        ${teams.length === 0 ? `
+                          <div style="padding:1.25rem; text-align:center; color:var(--text-muted); font-size:0.85rem;">
+                            No teams registered.
+                          </div>
+                        ` : teams.map(t => {
+                          if (!t) return '';
+                          const isSel = (selectedTeamId === t.id);
+                          const remaining = (typeof t.remainingPoints === 'number' && !isNaN(t.remainingPoints)) ? t.remainingPoints : (Number(t.startingPoints) || 10000);
+                          const rosterLen = Array.isArray(t.roster) ? t.roster.length : (racers.filter(r => r && r.soldToTeamId === t.id).length);
+                          const maxSlots = Number(t.maxRoster) || 4;
+
+                          return `
+                            <div class="custom-dropdown-item ${isSel ? 'selected' : ''}" onclick="window.adminView.selectWinningTeam('${t.id}')">
+                              <div style="display:flex; align-items:center; gap:0.75rem; min-width:0;">
+                                <div class="dropdown-team-thumb" style="border:1.5px solid ${t.color || '#00f2fe'};">
+                                  ${t.logoUrl ? `<img src="${t.logoUrl}" style="width:100%; height:100%; object-fit:cover;">` : `<span>${t.logoIcon || '🏎️'}</span>`}
+                                </div>
+                                <div style="display:flex; flex-direction:column; min-width:0;">
+                                  <span class="dropdown-item-name">${t.name || 'Team'}</span>
+                                  <span style="font-size:0.72rem; color:var(--text-muted);">
+                                    Roster: ${rosterLen}/${maxSlots} Signed
+                                  </span>
+                                </div>
+                              </div>
+                              <div style="font-family:var(--font-mono); font-weight:800; font-size:0.88rem; color:var(--accent-green); flex-shrink:0; text-align:right;">
+                                ${remaining.toLocaleString()} PTS
+                              </div>
+                            </div>
+                          `;
+                        }).join('')}
+                      </div>
+                    </div>
                   </div>
 
                   <!-- Price & Quick Increments -->
