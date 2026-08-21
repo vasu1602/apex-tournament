@@ -10,14 +10,3 @@ High-octane real-time racing tournament auction platform featuring dynamic team 
 
 - **Multi-Window Telemetry Sync**: Real-time cross-tab updates via BroadcastChannel API.
 - **Animated 60+ FPS Canvas Background**: Aerodynamic sports cars racing on night speedway circuit with nitro flame bursts and light trails.
-
-## Getting Started
-To run locally:
-```bash
-# Using Python
-python -m http.server 8080
-
-# Or using Node.js / npx
-npx serve .
-```
-Open [http://localhost:8080](http://localhost:8080) in your browser.
